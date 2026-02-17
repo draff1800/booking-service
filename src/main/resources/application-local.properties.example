@@ -1,0 +1,8 @@
+spring.application.name=booking-service
+
+spring.datasource.url=jdbc:postgresql://example-host:0000/example-database-name
+spring.datasource.username=example-user
+spring.datasource.password=example-password
+
+spring.jpa.hibernate.ddl-auto=validate
+spring.flyway.enabled=true

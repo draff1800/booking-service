@@ -33,6 +33,9 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+### Spring Boot ###
+src/main/resources/application-local.properties
+
 ### Gradle ###
 .gradle
 build/
