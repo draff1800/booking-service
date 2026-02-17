@@ -15,7 +15,7 @@ public class SecurityConfig {
         // Disable CSRF to keep local testing simple (will revisit when JWT is added)
         .csrf(csrf -> csrf.disable())
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/health").permitAll()
+            .requestMatchers("/health", "/demo/**").permitAll()
             .anyRequest().authenticated()
         )
         // Keep default form login for now (will replace with JWT)
