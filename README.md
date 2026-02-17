@@ -78,7 +78,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
 4. Run the service (on [localhost:8080](http://localhost:8080)):
 
     ```bash
-    ./gradlew bootRun --args='--spring.profiles.active=local''
+    ./gradlew bootRun --args='--spring.profiles.active=local'
     ```
 
 5. When you stop the service, remember to stop the database too:
