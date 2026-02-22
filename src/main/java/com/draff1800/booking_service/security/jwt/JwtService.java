@@ -24,7 +24,7 @@ public class JwtService {
 
     public JwtService(
         @Value("${JWT_SECRET}") String secret,
-        @Value("${JWT_TIME_TO_LIVE_SECONDS") long timeToLiveSeconds
+        @Value("${JWT_TIME_TO_LIVE_SECONDS}") long timeToLiveSeconds
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.timeToLiveSeconds = timeToLiveSeconds;
