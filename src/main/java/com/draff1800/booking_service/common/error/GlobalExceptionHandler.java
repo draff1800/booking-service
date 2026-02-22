@@ -2,6 +2,8 @@ package com.draff1800.booking_service.common.error;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -18,6 +20,8 @@ import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
@@ -61,7 +65,7 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(UnauthorizedException.class)
-  public ResponseEntity<ApiError> handleConflict(UnauthorizedException exception, HttpServletRequest request) {
+  public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException exception, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
       401,
       "UNAUTHORIZED",
@@ -74,11 +78,16 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGeneric(Exception exception, HttpServletRequest request) {
+    String traceId = randomTraceId();
+    String requestUri = request.getRequestURI();
+    
+    logger.error("Unexpected Error - traceId={} path={}", traceId, requestUri, exception);
+
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiError.of(
         500,
         "INTERNAL_ERROR",
         "Unexpected error",
-        request.getRequestURI(),
+        requestUri,
         randomTraceId(),
         null
     ));
