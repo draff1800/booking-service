@@ -8,7 +8,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
 #### ⚙️ Tech Stack
 - Java 17+
 - Spring Boot 3
-- JSON Web Token
+- JSON Web Token (JWT)
 - PostgreSQL
 - Docker
 - JUnit & Mockito
@@ -32,7 +32,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
     cd user-service
     ```
 
-2. Set up environment variables (to create the database):
+2. Set up `.env` environment variables:
     - Create a `.env`:
 
       ```bash
@@ -46,8 +46,10 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
       - `POSTGRES_PASSWORD`: Database User password
       - `POSTGRES_HOST`: Database host (E.g. `localhost`)
       - `POSTGRES_PORT`: Database port (E.g. `5432`)
+      - `JWT_SECRET`: String for authorization (At least 32 characters long)
+      - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
 
-3. Set up environment variables (to connect to the database):
+3. Set up `application-local.properties` environment variables:
     - Create a `src/main/resources/application-local.properties`:
 
       ```bash
@@ -61,6 +63,8 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
         - `example-database-name` ⬅️ `POSTGRES_DB`
         - `example-user` ⬅️ `POSTGRES_USER`
         - `example-password` ⬅️ `POSTGRES_PASSWORD`
+        - `example-jwt-secret` ⬅️ `JWT_SECRET`
+        - `example-jwt-time-to-live-seconds` ⬅️ `JWT_TIME_TO_LIVE_SECONDS`
 
 #### Local Development
 1. Install the following prerequisites:

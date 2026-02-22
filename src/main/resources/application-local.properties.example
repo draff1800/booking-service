@@ -6,3 +6,6 @@ spring.datasource.password=example-password
 
 spring.jpa.hibernate.ddl-auto=validate
 spring.flyway.enabled=true
+
+JWT_SECRET=example-jwt-secret
+JWT_TIME_TO_LIVE_SECONDS=example-jwt-time-to-live-seconds
