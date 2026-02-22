@@ -1,4 +1,4 @@
-package com.draff1800.booking_service.user.api;
+package com.draff1800.booking_service.user.api.controller;
 
 import com.draff1800.booking_service.security.jwt.JwtService;
 import com.draff1800.booking_service.user.api.dto.request.LoginRequest;

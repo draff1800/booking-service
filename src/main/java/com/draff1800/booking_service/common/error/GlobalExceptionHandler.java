@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.draff1800.booking_service.common.error.exception.ConflictException;
+import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.common.error.exception.UnauthorizedException;
 
 import java.util.LinkedHashMap;
@@ -52,11 +53,11 @@ public class GlobalExceptionHandler {
     ));
   }
 
-  @ExceptionHandler(ConflictException.class)
-  public ResponseEntity<ApiError> handleConflict(ConflictException exception, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(
-      409,
-      "CONFLICT",
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
+      401,
+      "UNAUTHORIZED",
       exception.getMessage(),
       request.getRequestURI(),
       randomTraceId(),
@@ -64,11 +65,23 @@ public class GlobalExceptionHandler {
     ));
   }
 
-  @ExceptionHandler(UnauthorizedException.class)
-  public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException exception, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
-      401,
-      "UNAUTHORIZED",
+  @ExceptionHandler(NotFoundException.class)
+  public ResponseEntity<ApiError> handleNotFound(NotFoundException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(
+        404,
+        "NOT_FOUND",
+        exception.getMessage(),
+        request.getRequestURI(),
+        randomTraceId(),
+        null
+    ));
+  }
+
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ApiError> handleConflict(ConflictException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(
+      409,
+      "CONFLICT",
       exception.getMessage(),
       request.getRequestURI(),
       randomTraceId(),
