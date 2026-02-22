@@ -9,6 +9,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.draff1800.booking_service.common.error.exception.ConflictException;
+import com.draff1800.booking_service.common.error.exception.UnauthorizedException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -17,9 +20,9 @@ import java.util.UUID;
 public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+  public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
     Map<String, Object> fieldErrors = new LinkedHashMap<>();
-    for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+    for (FieldError fe : exception.getBindingResult().getFieldErrors()) {
       fieldErrors.putIfAbsent(fe.getField(), fe.getDefaultMessage());
     }
 
@@ -27,31 +30,55 @@ public class GlobalExceptionHandler {
         400,
         "VALIDATION_ERROR",
         "Request validation failed",
-        req.getRequestURI(),
+        request.getRequestURI(),
         randomTraceId(),
         Map.of("fields", fieldErrors)
     ));
   }
 
   @ExceptionHandler(ConstraintViolationException.class)
-  public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+  public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException exception, HttpServletRequest request) {
     return ResponseEntity.badRequest().body(ApiError.of(
         400,
         "VALIDATION_ERROR",
-        ex.getMessage(),
-        req.getRequestURI(),
+        exception.getMessage(),
+        request.getRequestURI(),
         randomTraceId(),
         null
     ));
   }
 
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ApiError> handleConflict(ConflictException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(
+      409,
+      "CONFLICT",
+      exception.getMessage(),
+      request.getRequestURI(),
+      randomTraceId(),
+      null
+    ));
+  }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiError> handleConflict(UnauthorizedException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
+      401,
+      "UNAUTHORIZED",
+      exception.getMessage(),
+      request.getRequestURI(),
+      randomTraceId(),
+      null
+    ));
+  }
+
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest req) {
+  public ResponseEntity<ApiError> handleGeneric(Exception exception, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiError.of(
         500,
         "INTERNAL_ERROR",
         "Unexpected error",
-        req.getRequestURI(),
+        request.getRequestURI(),
         randomTraceId(),
         null
     ));

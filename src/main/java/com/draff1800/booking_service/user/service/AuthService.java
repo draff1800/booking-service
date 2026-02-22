@@ -4,6 +4,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.draff1800.booking_service.common.error.exception.ConflictException;
+import com.draff1800.booking_service.common.error.exception.UnauthorizedException;
 import com.draff1800.booking_service.user.domain.User;
 import com.draff1800.booking_service.user.domain.UserRole;
 import com.draff1800.booking_service.user.repo.UserRepository;
@@ -24,7 +26,7 @@ public class AuthService {
         String normalisedEmail = email.trim().toLowerCase();
 
         if (userRepository.existsByEmail(normalisedEmail)) {
-            throw new IllegalArgumentException("Email is already registered");
+            throw new ConflictException("Email is already registered");
         }
 
         String hashedPassword = passwordEncoder.encode(rawPassword);
@@ -35,7 +37,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public User login(String email, String rawPassword) {
         String normalisedEmail = email.trim().toLowerCase();
-        IllegalArgumentException loginException = new IllegalArgumentException("Invalid credentials");
+        UnauthorizedException loginException = new UnauthorizedException("Invalid credentials");
 
         User user = userRepository.findByEmail(normalisedEmail).orElseThrow(
             () -> loginException
