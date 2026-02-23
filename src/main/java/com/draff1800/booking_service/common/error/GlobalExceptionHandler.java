@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.draff1800.booking_service.common.error.exception.ConflictException;
+import com.draff1800.booking_service.common.error.exception.ForbiddenException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.common.error.exception.UnauthorizedException;
 
@@ -58,6 +59,18 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError.of(
       401,
       "UNAUTHORIZED",
+      exception.getMessage(),
+      request.getRequestURI(),
+      randomTraceId(),
+      null
+    ));
+  }
+
+  @ExceptionHandler(ForbiddenException.class)
+  public ResponseEntity<ApiError> handleForbidden(ForbiddenException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError.of(
+      403,
+      "FORBIDDEN",
       exception.getMessage(),
       request.getRequestURI(),
       randomTraceId(),

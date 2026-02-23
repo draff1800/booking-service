@@ -76,4 +76,8 @@ public class Event {
   public UUID getCreatedBy() { return createdBy; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  public void publish() {
+    this.status = EventStatus.PUBLISHED;
+  }
 }

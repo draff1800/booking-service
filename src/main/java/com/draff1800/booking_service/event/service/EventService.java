@@ -1,6 +1,7 @@
 package com.draff1800.booking_service.event.service;
 
 import com.draff1800.booking_service.common.error.exception.ConflictException;
+import com.draff1800.booking_service.common.error.exception.ForbiddenException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.event.domain.Event;
 import com.draff1800.booking_service.event.domain.EventStatus;
@@ -33,12 +34,28 @@ public class EventService {
   }
 
   @Transactional(readOnly = true)
+  public Event get(UUID id) {
+    return eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+  }
+
+  @Transactional(readOnly = true)
   public Page<Event> listPublicUpcoming(Pageable pageable) {
     return eventRepository.findByStatusAndStartsAtAfterOrderByStartsAtAsc(EventStatus.PUBLISHED, Instant.now(), pageable);
   }
 
-  @Transactional(readOnly = true)
-  public Event get(UUID id) {
-    return eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+  @Transactional
+  public Event publish(UUID eventId, UUID requesterUserId) {
+    Event event = get(eventId);
+
+    if (!event.getCreatedBy().equals(requesterUserId)) {
+      throw new ForbiddenException("Only the event creator can publish this event");
+    }
+
+    if (event.getStatus() == EventStatus.CANCELLED) {
+      throw new ConflictException("Cancelled events cannot be published");
+    }
+
+    event.publish();
+    return eventRepository.save(event);
   }
 }

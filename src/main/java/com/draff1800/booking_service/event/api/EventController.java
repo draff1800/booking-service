@@ -32,14 +32,19 @@ public class EventController {
     return toResponse(e);
   }
 
+  @GetMapping("/{id}")
+  public EventResponse get(@PathVariable UUID id) {
+    return toResponse(eventService.get(id));
+  }
+
   @GetMapping
   public Page<EventResponse> list(Pageable pageable) {
     return eventService.listPublicUpcoming(pageable).map(this::toResponse);
   }
 
-  @GetMapping("/{id}")
-  public EventResponse get(@PathVariable UUID id) {
-    return toResponse(eventService.get(id));
+  @PostMapping("/{id}/publish")
+  public EventResponse publish(@PathVariable UUID id, @AuthenticationPrincipal AuthPrincipal principal) {
+    return toResponse(eventService.publish(id, principal.userId()));
   }
 
   private EventResponse toResponse(Event event) {
