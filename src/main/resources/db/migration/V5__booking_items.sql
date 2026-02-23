@@ -1,12 +1,12 @@
 CREATE TABLE booking_items (
-  id uuid PRIMARY KEY,
-  booking_id uuid NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-  ticket_type_id uuid NOT NULL REFERENCES ticket_types(id),
-  quantity integer NOT NULL,
-  unit_price_minor integer NOT NULL,
-  currency char(3) NOT NULL,
-  created_at timestamptz NOT NULL,
-  updated_at timestamptz NOT NULL,
+  id UUID PRIMARY KEY,
+  booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  ticket_type_id UUID NOT NULL REFERENCES ticket_types(id),
+  quantity INTEGER NOT NULL,
+  unit_price_minor INTEGER NOT NULL,
+  currency CHAR(3) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   CONSTRAINT chk_quantity_positive CHECK (quantity > 0)
 );
 
