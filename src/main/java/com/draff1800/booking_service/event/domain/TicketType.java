@@ -49,10 +49,10 @@ public class TicketType {
 
   @PrePersist
   void prePersist() {
-    Instant now = Instant.now();
+    Instant currentInstant = Instant.now();
     if (id == null) id = UUID.randomUUID();
-    createdAt = now;
-    updatedAt = now;
+    createdAt = currentInstant;
+    updatedAt = currentInstant;
   }
 
   @PreUpdate

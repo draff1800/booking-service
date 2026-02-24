@@ -11,6 +11,6 @@ import java.util.Collection;
 import java.util.UUID;
 
 public interface EventRepository extends JpaRepository<Event, UUID> {
-  Page<Event> findByStatusAndStartsAtAfterOrderByStartsAtAsc(EventStatus status, Instant now, Pageable pageable);
+  Page<Event> findByStatusAndStartsAtAfterOrderByStartsAtAsc(EventStatus status, Instant currentInstant, Pageable pageable);
   Page<Event> findByCreatedByAndStatusInOrderByStartsAtAsc(UUID createdBy, Collection<EventStatus> statuses, Pageable pageable);
 }
