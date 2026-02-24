@@ -8,6 +8,9 @@ import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,5 +87,28 @@ public class BookingService {
     bookingItems = bookingItemRepository.saveAll(bookingItems);
 
     return new BookingResult(booking, bookingItems);
+  }
+
+  @Transactional(readOnly = true)
+  public Page<BookingResult> listMine(UUID userId, Pageable pageable) {
+    Page<Booking> page = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+
+    List<UUID> bookingIds = page.getContent().stream()
+      .map(Booking::getId)
+      .toList();
+
+    Map<UUID, List<BookingItem>> itemsByBookingId = bookingIds.isEmpty()
+      ? Map.of()
+      : bookingItemRepository.findByBookingIdIn(bookingIds).stream()
+          .collect(
+            Collectors.groupingBy(
+              BookingItem::getBookingId
+            )
+          );
+
+    return page.map(b -> new BookingResult(
+        b,
+        itemsByBookingId.getOrDefault(b.getId(), List.of())
+    ));
   }
 }

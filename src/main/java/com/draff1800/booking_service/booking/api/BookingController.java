@@ -6,6 +6,9 @@ import com.draff1800.booking_service.booking.api.dto.response.BookingResponse;
 import com.draff1800.booking_service.booking.service.BookingService;
 import com.draff1800.booking_service.security.jwt.AuthPrincipal;
 import jakarta.validation.Valid;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,5 +55,20 @@ public class BookingController {
         result.booking().getStatus().name(),
         bookingItems
     );
+  }
+
+  @GetMapping("/mine")
+  public Page<BookingResponse> mine(@AuthenticationPrincipal AuthPrincipal principal, Pageable pageable) {
+    return bookingService.listMine(principal.userId(), pageable)
+      .map(r -> new BookingResponse(
+        r.booking().getId().toString(),
+        r.booking().getStatus().name(),
+        r.items().stream().map(i -> new BookingItemResponse(
+          i.getTicketTypeId().toString(),
+          i.getQuantity(),
+          i.getUnitPriceMinor(),
+          i.getCurrency()
+        )).toList()
+      ));
   }
 }
