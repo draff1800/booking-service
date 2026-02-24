@@ -60,14 +60,14 @@ public class BookingController {
   @GetMapping("/mine")
   public Page<BookingResponse> mine(@AuthenticationPrincipal AuthPrincipal principal, Pageable pageable) {
     return bookingService.listMine(principal.userId(), pageable)
-      .map(r -> new BookingResponse(
-        r.booking().getId().toString(),
-        r.booking().getStatus().name(),
-        r.items().stream().map(i -> new BookingItemResponse(
-          i.getTicketTypeId().toString(),
-          i.getQuantity(),
-          i.getUnitPriceMinor(),
-          i.getCurrency()
+      .map(booking -> new BookingResponse(
+        booking.booking().getId().toString(),
+        booking.booking().getStatus().name(),
+        booking.items().stream().map(bookingItem -> new BookingItemResponse(
+          bookingItem.getTicketTypeId().toString(),
+          bookingItem.getQuantity(),
+          bookingItem.getUnitPriceMinor(),
+          bookingItem.getCurrency()
         )).toList()
       ));
   }
