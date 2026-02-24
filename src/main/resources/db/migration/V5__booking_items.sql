@@ -4,7 +4,7 @@ CREATE TABLE booking_items (
   ticket_type_id UUID NOT NULL REFERENCES ticket_types(id),
   quantity INTEGER NOT NULL,
   unit_price_minor INTEGER NOT NULL,
-  currency CHAR(3) NOT NULL,
+  currency VARCHAR(3) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
   CONSTRAINT chk_quantity_positive CHECK (quantity > 0)

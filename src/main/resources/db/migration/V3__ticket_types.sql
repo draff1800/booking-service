@@ -3,7 +3,7 @@ CREATE TABLE ticket_types (
   event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
   price_minor INTEGER NOT NULL,
-  currency CHAR(3) NOT NULL,
+  currency VARCHAR(3) NOT NULL,
   capacity_total INTEGER NOT NULL,
   capacity_remaining INTEGER NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
