@@ -8,7 +8,7 @@ import java.time.Instant;
 
   public record CreateEventRequest(
       @NotBlank(message = "title is required")
-      @Size(max = 200, message = "title must be less that 200 characters")
+      @Size(max = 200, message = "title must be less than 200 characters")
       String title,
 
       String description,

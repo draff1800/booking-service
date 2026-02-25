@@ -31,9 +31,7 @@ public class EventService {
 
   @Transactional
   public Event create(String title, String description, String venue, Instant startsAt, Instant endsAt, UUID createdBy) {
-    if (!endsAt.isAfter(startsAt)) {
-      throw new ConflictException("endsAt must be after startsAt");
-    }
+    assertValidEventTimes(startsAt, endsAt);
 
     Event event = new Event(title, description, venue, startsAt, endsAt, createdBy);
     return eventRepository.save(event);
@@ -62,9 +60,7 @@ public class EventService {
   public Event publish(UUID eventId, UUID requesterUserId) {
     Event event = get(eventId);
 
-    if (!event.getCreatedBy().equals(requesterUserId)) {
-      throw new ForbiddenException("Only the event creator can publish this event");
-    }
+    assertUserIsEventCreator(event, requesterUserId);
 
     if (event.getStatus() == EventStatus.CANCELLED) {
       throw new ConflictException("Cancelled events cannot be published");
@@ -72,6 +68,66 @@ public class EventService {
 
     event.publish();
     return eventRepository.save(event);
+  }
+
+  @Transactional
+  public Event updateDetails(
+    UUID eventId, 
+    UUID requesterUserId,
+    String title, 
+    String description, 
+    String venue,
+    Instant startsAt, 
+    Instant endsAt
+  ) {
+
+    Event event = get(eventId);
+
+    assertUserIsEventCreator(event, requesterUserId);
+    assertEventIsDraft(event, "Updating event");
+
+    String newTitle = (title != null) ? title.trim() : event.getTitle();
+    String newDescription = (description != null) ? description : event.getDescription();
+    String newVenue = (venue != null) ? venue : event.getVenue();
+    Instant newStartsAt = (startsAt != null) ? startsAt : event.getStartsAt();
+    Instant newEndsAt = (endsAt != null) ? endsAt : event.getEndsAt();
+
+    assertValidEventTimes(newStartsAt, newEndsAt);
+
+    event.updateDetails(newTitle, newDescription, newVenue, newStartsAt, newEndsAt);
+    return eventRepository.save(event);
+  }
+
+  @Transactional
+  public Event cancel(UUID eventId, UUID requesterUserId) {
+    Event event = get(eventId);
+
+    assertUserIsEventCreator(event, requesterUserId);
+
+    if (event.getStatus() == EventStatus.CANCELLED) {
+      return event;
+    }
+
+    event.cancel();
+    return eventRepository.save(event);
+  }
+
+  private void assertUserIsEventCreator(Event event, UUID requesterUserId) {
+    if (!event.getCreatedBy().equals(requesterUserId)) {
+      throw new ForbiddenException("Only the event creator can perform this action");
+    }
+  }
+
+  private void assertEventIsDraft(Event event, String action) {
+    if (event.getStatus() != EventStatus.DRAFT) {
+      throw new ConflictException(action + " is only allowed while event is DRAFT");
+    }
+  }
+
+  private void assertValidEventTimes(Instant startsAt, Instant endsAt) {
+    if (!endsAt.isAfter(startsAt)) {
+      throw new ConflictException("endsAt must be after startsAt");
+    }
   }
 
   @Transactional

@@ -2,6 +2,7 @@ package com.draff1800.booking_service.event.api;
 
 import com.draff1800.booking_service.event.api.dto.request.CreateEventRequest;
 import com.draff1800.booking_service.event.api.dto.request.CreateTicketTypeRequest;
+import com.draff1800.booking_service.event.api.dto.request.PatchEventRequest;
 import com.draff1800.booking_service.event.api.dto.response.EventResponse;
 import com.draff1800.booking_service.event.api.dto.response.TicketTypeResponse;
 import com.draff1800.booking_service.event.domain.Event;
@@ -54,6 +55,34 @@ public class EventController {
   @GetMapping("/mine")
   public Page<EventResponse> listMine(@AuthenticationPrincipal AuthPrincipal principal, Pageable pageable) {
     return eventService.listMine(principal.userId(), pageable).map(this::toResponse);
+  }
+
+  @PatchMapping("/{id}")
+  public EventResponse updateDetails(
+    @PathVariable UUID id,
+    @AuthenticationPrincipal AuthPrincipal principal,
+    @Valid @RequestBody PatchEventRequest req
+  ) {
+
+    Event updatedEvent = eventService.updateDetails(
+        id,
+        principal.userId(),
+        req.title(),
+        req.description(),
+        req.venue(),
+        req.startsAt(),
+        req.endsAt()
+    );
+
+    return toResponse(updatedEvent);
+  }
+
+  @PostMapping("/{id}/cancel")
+  public EventResponse cancel(
+    @PathVariable UUID id,
+    @AuthenticationPrincipal AuthPrincipal principal
+  ) {
+    return toResponse(eventService.cancel(id, principal.userId()));
   }
 
   @PostMapping("/{id}/ticket-types")

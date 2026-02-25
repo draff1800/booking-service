@@ -80,4 +80,16 @@ public class Event {
   public void publish() {
     this.status = EventStatus.PUBLISHED;
   }
+
+  public void updateDetails(String title, String description, String venue, Instant startsAt, Instant endsAt) {
+    this.title = title;
+    this.description = description;
+    this.venue = venue;
+    this.startsAt = startsAt;
+    this.endsAt = endsAt;
+  }
+
+  public void cancel() {
+    this.status = EventStatus.CANCELLED;
+  }
 }
