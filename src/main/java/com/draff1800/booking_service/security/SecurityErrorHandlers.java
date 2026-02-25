@@ -24,25 +24,30 @@ public class SecurityErrorHandlers implements AuthenticationEntryPoint, AccessDe
     this.objectMapper = objectMapper;
   }
 
+  // Overrides AuthenticationEntryPoint.commence(...)
+  // Triggers when request requires authentication, but user is not authenticated.
   @Override
   public void commence(
     HttpServletRequest request, 
     HttpServletResponse response, 
     AuthenticationException ex
   ) throws IOException {
-    write(response, request, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required");
+    writeErrorStatusAndBody(response, request, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required");
   }
 
+  // Overrides AccessDeniedHandler.handle(...)
+  // Triggers when user is authenticated but does not have sufficient permissions.
+  // (May remove later if not required)
   @Override
   public void handle(
     HttpServletRequest request, 
     HttpServletResponse response, 
     AccessDeniedException ex
   ) throws IOException {
-    write(response, request, HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
+    writeErrorStatusAndBody(response, request, HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
   }
 
-  private void write(
+  private void writeErrorStatusAndBody(
     HttpServletResponse response, 
     HttpServletRequest request, 
     HttpStatus status, 
