@@ -6,9 +6,11 @@ import com.draff1800.booking_service.booking.repo.BookingItemRepository;
 import com.draff1800.booking_service.booking.repo.BookingRepository;
 import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
+import com.draff1800.booking_service.common.idempotency.IdempotencyKeys;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,9 +40,21 @@ public class BookingService {
   public record BookingResult(Booking booking, List<BookingItem> items) {}
 
   @Transactional
-  public BookingResult createBooking(UUID userId, Map<UUID, Integer> quantitiesByTicketType) {
+  public BookingResult createBooking(
+    UUID userId, 
+    String idempotencyKey, 
+    Map<UUID, Integer> quantitiesByTicketType
+  ) {
+
     if (quantitiesByTicketType.isEmpty()) {
       throw new ConflictException("No booking items provided");
+    }
+
+    String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
+
+    var existingBooking = getExistingBooking(userId, normalisedIKey);
+    if (existingBooking.isPresent()) {
+      return existingBooking.get();
     }
 
     List<UUID> ticketTypeIds = new ArrayList<>(quantitiesByTicketType.keySet());
@@ -62,7 +76,17 @@ public class BookingService {
       }
     }
 
-    Booking booking = bookingRepository.save(new Booking(userId));
+    Booking booking;
+    try {
+      booking = bookingRepository.save(new Booking(userId, normalisedIKey));
+    } catch (DataIntegrityViolationException exception) {
+      // Re-check for existing booking in case the same request was made twice concurrently
+      existingBooking = getExistingBooking(userId, normalisedIKey);
+      if (existingBooking.isPresent()) {
+        return existingBooking.get();
+      }
+      throw exception;
+    }
 
     Map<UUID, TicketType> ticketTypesById = ticketTypes.stream().collect(
       Collectors.toMap(TicketType::getId, ticketType -> ticketType)
@@ -110,5 +134,21 @@ public class BookingService {
         b,
         itemsByBookingId.getOrDefault(b.getId(), List.of())
     ));
+  }
+
+  private Optional<BookingResult> getExistingBooking(UUID userId, String idempotencyKey) {
+    if (idempotencyKey == null) {
+      return Optional.empty();
+    }
+
+    var existingBooking = bookingRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
+
+    if (existingBooking.isEmpty()) {
+      return Optional.empty();
+    }
+
+    var bookingItems = bookingItemRepository.findByBookingId(existingBooking.get().getId());  
+
+    return Optional.of(new BookingResult(existingBooking.get(), bookingItems));
   }
 }

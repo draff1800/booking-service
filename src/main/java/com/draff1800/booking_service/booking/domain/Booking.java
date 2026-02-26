@@ -25,11 +25,15 @@ public class Booking {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "idempotency_key", length = 100)
+  private String idempotencyKey;
+
   protected Booking() {}
 
-  public Booking(UUID userId) {
+  public Booking(UUID userId, String idempotencyKey) {
     this.userId = userId;
     this.status = BookingStatus.CONFIRMED;
+    this.idempotencyKey = idempotencyKey;
   }
 
   @PrePersist

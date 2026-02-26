@@ -29,6 +29,7 @@ public class BookingController {
   @PostMapping
   public BookingResponse create(
     @AuthenticationPrincipal AuthPrincipal principal,
+    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
     @Valid @RequestBody CreateBookingRequest req
   ) {
 
@@ -39,7 +40,11 @@ public class BookingController {
       ticketTypeQuantitiesById.merge(ticketTypeId, quantity, Integer::sum);
     }
 
-    BookingService.BookingResult result = bookingService.createBooking(principal.userId(), ticketTypeQuantitiesById);
+    BookingService.BookingResult result = bookingService.createBooking(
+      principal.userId(), 
+      idempotencyKey, 
+      ticketTypeQuantitiesById
+    );
 
     var bookingItems = result.items().stream()
         .map(i -> new BookingItemResponse(
