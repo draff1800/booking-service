@@ -40,9 +40,20 @@ public class Event {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "idempotency_key", length = 100)
+  private String idempotencyKey;
+
   protected Event() {}
 
-  public Event(String title, String description, String venue, Instant startsAt, Instant endsAt, UUID createdBy) {
+  public Event(
+    String title, 
+    String description, 
+    String venue, 
+    Instant startsAt, 
+    Instant endsAt, 
+    UUID createdBy,
+    String idempotencyKey
+  ) {
     this.title = title;
     this.description = description;
     this.venue = venue;
@@ -50,6 +61,7 @@ public class Event {
     this.endsAt = endsAt;
     this.createdBy = createdBy;
     this.status = EventStatus.DRAFT;
+    this.idempotencyKey = idempotencyKey;
   }
 
   @PrePersist

@@ -53,9 +53,7 @@ public class BookingService {
     String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
 
     var existingBooking = getExistingBooking(userId, normalisedIKey);
-    if (existingBooking.isPresent()) {
-      return existingBooking.get();
-    }
+    if (existingBooking.isPresent()) return existingBooking.get();
 
     List<UUID> ticketTypeIds = new ArrayList<>(quantitiesByTicketType.keySet());
     List<TicketType> ticketTypes = ticketTypeRepository.findAllById(ticketTypeIds);
@@ -80,11 +78,9 @@ public class BookingService {
     try {
       booking = bookingRepository.save(new Booking(userId, normalisedIKey));
     } catch (DataIntegrityViolationException exception) {
-      // Re-check for existing booking in case the same request was made twice concurrently
+      // Re-check for existing booking in case same request was made twice concurrently
       existingBooking = getExistingBooking(userId, normalisedIKey);
-      if (existingBooking.isPresent()) {
-        return existingBooking.get();
-      }
+      if (existingBooking.isPresent()) return existingBooking.get();
       throw exception;
     }
 

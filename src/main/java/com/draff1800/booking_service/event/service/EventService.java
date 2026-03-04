@@ -1,14 +1,17 @@
 package com.draff1800.booking_service.event.service;
 
+import com.draff1800.booking_service.booking.service.BookingService.BookingResult;
 import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.ForbiddenException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
+import com.draff1800.booking_service.common.idempotency.IdempotencyKeys;
 import com.draff1800.booking_service.event.domain.Event;
 import com.draff1800.booking_service.event.domain.EventStatus;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.EventRepository;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,11 +34,36 @@ public class EventService {
   }
 
   @Transactional
-  public Event create(String title, String description, String venue, Instant startsAt, Instant endsAt, UUID createdBy) {
+  public Event create(
+    String title, 
+    String description, 
+    String venue, 
+    Instant startsAt, 
+    Instant endsAt, 
+    UUID createdBy,
+    String idempotencyKey
+  ) {
+
+    String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
+
+    var existingEvent = getExistingEvent(createdBy, normalisedIKey);
+    if (existingEvent.isPresent()) return existingEvent.get();
+
     assertValidEventTimes(startsAt, endsAt);
 
-    Event event = new Event(title, description, venue, startsAt, endsAt, createdBy);
-    return eventRepository.save(event);
+    Event event;
+    try {
+      event = eventRepository.save(
+        new Event(title, description, venue, startsAt, endsAt, createdBy, normalisedIKey)
+      );
+    } catch(DataIntegrityViolationException exception) {
+      // Re-check for existing event in case same request was made twice concurrently
+      existingEvent = getExistingEvent(createdBy, normalisedIKey);
+      if (existingEvent.isPresent()) return existingEvent.get();
+      throw exception;
+    }
+
+    return event;
   }
 
   @Transactional(readOnly = true)
@@ -122,6 +151,20 @@ public class EventService {
     if (event.getStatus() != EventStatus.DRAFT) {
       throw new ConflictException(action + " is only allowed while event is DRAFT");
     }
+  }
+
+  private Optional<Event> getExistingEvent(UUID createdBy, String idempotencyKey) {
+    if (idempotencyKey == null) {
+      return Optional.empty();
+    }
+
+    var existingEvent = eventRepository.findByCreatedByAndIdempotencyKey(createdBy, idempotencyKey);
+
+    if (existingEvent.isEmpty()) {
+      return Optional.empty();
+    } 
+
+    return existingEvent;
   }
 
   private void assertValidEventTimes(Instant startsAt, Instant endsAt) {

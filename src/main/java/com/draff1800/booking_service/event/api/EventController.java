@@ -31,10 +31,21 @@ public class EventController {
   @PostMapping
   public EventResponse create(
     @AuthenticationPrincipal AuthPrincipal principal,
+    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
     @Valid @RequestBody CreateEventRequest req
   ) {
-    Event e = eventService.create(req.title(), req.description(), req.venue(), req.startsAt(), req.endsAt(), principal.userId());
-    return toResponse(e);
+
+    Event event = eventService.create(
+      req.title(), 
+      req.description(), 
+      req.venue(), 
+      req.startsAt(), 
+      req.endsAt(), 
+      principal.userId(), 
+      idempotencyKey
+    );
+
+    return toResponse(event);
   }
 
   @PostMapping("/{id}/publish")
@@ -119,15 +130,15 @@ public class EventController {
     );
   }
 
-  private TicketTypeResponse toResponse(TicketType tt) {
+  private TicketTypeResponse toResponse(TicketType ticketType) {
     return new TicketTypeResponse(
-      tt.getId().toString(),
-      tt.getEventId().toString(),
-      tt.getName(),
-      tt.getPriceMinor(),
-      tt.getCurrency(),
-      tt.getCapacityTotal(),
-      tt.getCapacityRemaining()
+      ticketType.getId().toString(),
+      ticketType.getEventId().toString(),
+      ticketType.getName(),
+      ticketType.getPriceMinor(),
+      ticketType.getCurrency(),
+      ticketType.getCapacityTotal(),
+      ticketType.getCapacityRemaining()
     );
   }
 }
