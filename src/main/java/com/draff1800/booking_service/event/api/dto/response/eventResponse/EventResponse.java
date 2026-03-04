@@ -1,4 +1,4 @@
-package com.draff1800.booking_service.event.api.dto.response;
+package com.draff1800.booking_service.event.api.dto.response.eventResponse;
 
 import com.draff1800.booking_service.event.domain.EventStatus;
 
@@ -11,5 +11,6 @@ public record EventResponse(
     String venue,
     Instant startsAt,
     Instant endsAt,
-    EventStatus status
+    EventStatus status,
+    Organizer organizer
 ) {}

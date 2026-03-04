@@ -1,6 +1,5 @@
 package com.draff1800.booking_service.event.service;
 
-import com.draff1800.booking_service.booking.service.BookingService.BookingResult;
 import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.ForbiddenException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
@@ -10,28 +9,41 @@ import com.draff1800.booking_service.event.domain.EventStatus;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.EventRepository;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
+import com.draff1800.booking_service.user.domain.User;
+import com.draff1800.booking_service.user.repo.UserRepository;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
 
   private final EventRepository eventRepository;
+  private final UserRepository userRepository;
   private final TicketTypeRepository ticketTypeRepository;
 
-  public EventService(EventRepository eventRepository, TicketTypeRepository ticketTypeRepository) {
+  public EventService(
+    EventRepository eventRepository,
+    UserRepository userRepository,
+    TicketTypeRepository ticketTypeRepository
+  ) {
     this.eventRepository = eventRepository;
+    this.userRepository = userRepository;
     this.ticketTypeRepository = ticketTypeRepository;
   }
+
+  public record EventWithOrganizer(Event event, @Nullable User organizer) {}
 
   @Transactional
   public Event create(
@@ -67,27 +79,56 @@ public class EventService {
   }
 
   @Transactional(readOnly = true)
-  public Event get(UUID id) {
-    return eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+  public EventWithOrganizer get(UUID id) {
+    Event event = eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+
+    User organizer = userRepository.findById(event.getCreatedBy()).orElse(null);
+
+    return new EventWithOrganizer(event, organizer);
   }
 
   @Transactional(readOnly = true)
-  public Page<Event> listMine(UUID userId, Pageable pageable) {
-    return eventRepository.findByCreatedByAndStatusInOrderByStartsAtAsc(
+  public Page<EventWithOrganizer> listMine(UUID userId, Pageable pageable) {
+    Page<Event> page = eventRepository.findByCreatedByAndStatusInOrderByStartsAtAsc(
         userId,
         List.of(EventStatus.DRAFT, EventStatus.PUBLISHED),
         pageable
     );
+
+    User me = userRepository.findById(userId).orElse(null);
+    
+    return page.map(event -> new EventWithOrganizer(event, me));
   }
 
   @Transactional(readOnly = true)
-  public Page<Event> listPublicUpcoming(Pageable pageable) {
-    return eventRepository.findByStatusAndStartsAtAfterOrderByStartsAtAsc(EventStatus.PUBLISHED, Instant.now(), pageable);
+  public Page<EventWithOrganizer> listPublicUpcoming(Pageable pageable) {
+    Page<Event> page = eventRepository.findByStatusAndStartsAtAfterOrderByStartsAtAsc(
+      EventStatus.PUBLISHED, 
+      Instant.now(), 
+      pageable
+    );
+
+    Map<UUID, User> organizersByUserId = organizersByUserId(page.getContent());
+
+    return page.map(
+      event -> new EventWithOrganizer(
+        event, 
+        organizersByUserId.get(
+          event.getCreatedBy()
+        )
+      )
+    );
+  }
+
+  @Transactional(readOnly = true)
+  public EventWithOrganizer wrapWithOrganizer(Event event) {
+    User organizer = userRepository.findById(event.getCreatedBy()).orElse(null);
+    return new EventWithOrganizer(event, organizer);
   }
 
   @Transactional
   public Event publish(UUID eventId, UUID requesterUserId) {
-    Event event = get(eventId);
+    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
 
     assertUserIsEventCreator(event, requesterUserId);
 
@@ -110,7 +151,7 @@ public class EventService {
     Instant endsAt
   ) {
 
-    Event event = get(eventId);
+    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
 
     assertUserIsEventCreator(event, requesterUserId);
     assertEventIsDraft(event, "Updating event");
@@ -129,7 +170,7 @@ public class EventService {
 
   @Transactional
   public Event cancel(UUID eventId, UUID requesterUserId) {
-    Event event = get(eventId);
+    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
 
     assertUserIsEventCreator(event, requesterUserId);
 
@@ -139,6 +180,35 @@ public class EventService {
 
     event.cancel();
     return eventRepository.save(event);
+  }
+
+  private void assertValidEventTimes(Instant startsAt, Instant endsAt) {
+    if (!endsAt.isAfter(startsAt)) {
+      throw new ConflictException("endsAt must be after startsAt");
+    }
+  }
+
+  @Transactional(readOnly = true)
+  private Event getEvent(UUID id) {
+    return eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+  }
+
+  private Map<UUID, User> organizersByUserId(List<Event> events) {
+    List<UUID> creatorIds = events.stream()
+      .map(Event::getCreatedBy)
+      .distinct()
+      .toList();
+
+    if (creatorIds.isEmpty()) return Map.of();
+
+    List<User> users = userRepository.findByIdIn(creatorIds);
+
+    return users.stream().collect(
+      Collectors.toMap(
+        User::getId, 
+        user -> user
+      )
+    );
   }
 
   private void assertUserIsEventCreator(Event event, UUID requesterUserId) {
@@ -167,12 +237,6 @@ public class EventService {
     return existingEvent;
   }
 
-  private void assertValidEventTimes(Instant startsAt, Instant endsAt) {
-    if (!endsAt.isAfter(startsAt)) {
-      throw new ConflictException("endsAt must be after startsAt");
-    }
-  }
-
   @Transactional
   public TicketType addTicketType(
     UUID eventId, 
@@ -184,7 +248,7 @@ public class EventService {
     String idempotencyKey
   ) {
 
-    Event event = get(eventId);
+    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
 
     assertUserIsEventCreator(event, requesterUserId);
     assertEventIsDraft(event, "Adding ticket types");

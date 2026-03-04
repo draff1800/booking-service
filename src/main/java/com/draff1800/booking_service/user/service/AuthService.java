@@ -30,7 +30,14 @@ public class AuthService {
         }
 
         String hashedPassword = passwordEncoder.encode(rawPassword);
-        User user = new User(normalisedEmail, hashedPassword, UserRole.USER);
+
+        String emailIdentifier = normalisedEmail.substring(0, normalisedEmail.indexOf('@'));
+        String baseHandle = slugify(emailIdentifier);
+        String uniqueHandle = uniqueHandleFor(baseHandle);
+
+        String displayName = emailIdentifier;
+
+        User user = new User(normalisedEmail, hashedPassword, UserRole.USER, uniqueHandle, displayName);
         return userRepository.save(user);
     }
 
@@ -48,5 +55,22 @@ public class AuthService {
         }
 
         return user;
+    }
+
+    private String slugify(String input) {
+        String s = input.toLowerCase().trim();
+        s = s.replaceAll("[^a-z0-9]+", "-");
+        s = s.replaceAll("(^-|-$)", "");
+        return s;
+    }
+
+    private String uniqueHandleFor(String base) {
+        String handle = base;
+        int suffix = 2;
+        while (handle.isBlank() || userRepository.existsByHandle(handle)) {
+            handle = base + "-" + suffix;
+            suffix++;
+        }
+        return handle;
     }
 }

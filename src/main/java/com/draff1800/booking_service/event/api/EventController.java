@@ -3,12 +3,16 @@ package com.draff1800.booking_service.event.api;
 import com.draff1800.booking_service.event.api.dto.request.CreateEventRequest;
 import com.draff1800.booking_service.event.api.dto.request.CreateTicketTypeRequest;
 import com.draff1800.booking_service.event.api.dto.request.PatchEventRequest;
-import com.draff1800.booking_service.event.api.dto.response.EventResponse;
 import com.draff1800.booking_service.event.api.dto.response.TicketTypeResponse;
+import com.draff1800.booking_service.event.api.dto.response.eventResponse.EventResponse;
+import com.draff1800.booking_service.event.api.dto.response.eventResponse.Organizer;
 import com.draff1800.booking_service.event.domain.Event;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.service.EventService;
+import com.draff1800.booking_service.event.service.EventService.EventWithOrganizer;
 import com.draff1800.booking_service.security.jwt.AuthPrincipal;
+import com.draff1800.booking_service.user.domain.User;
+
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,12 +49,13 @@ public class EventController {
       idempotencyKey
     );
 
-    return toResponse(event);
+    return toResponse(eventService.wrapWithOrganizer(event));
   }
 
   @PostMapping("/{id}/publish")
   public EventResponse publish(@PathVariable UUID id, @AuthenticationPrincipal AuthPrincipal principal) {
-    return toResponse(eventService.publish(id, principal.userId()));
+    Event event = eventService.publish(id, principal.userId());
+    return toResponse(eventService.wrapWithOrganizer(event));
   }
 
   @GetMapping("/{id}")
@@ -85,7 +90,7 @@ public class EventController {
         req.endsAt()
     );
 
-    return toResponse(updatedEvent);
+    return toResponse(eventService.wrapWithOrganizer(updatedEvent));
   }
 
   @PostMapping("/{id}/cancel")
@@ -93,7 +98,8 @@ public class EventController {
     @PathVariable UUID id,
     @AuthenticationPrincipal AuthPrincipal principal
   ) {
-    return toResponse(eventService.cancel(id, principal.userId()));
+    Event event = eventService.cancel(id, principal.userId());
+    return toResponse(eventService.wrapWithOrganizer(event));
   }
 
   @PostMapping("/{id}/ticket-types")
@@ -120,15 +126,33 @@ public class EventController {
     return eventService.listTicketTypes(id).stream().map(this::toResponse).toList();
   }
 
-  private EventResponse toResponse(Event event) {
+  private Organizer organizerOrPlaceholder(User organizer) {
+    if (organizer == null) {
+      return new Organizer(null, "Deleted User");
+    }
+    
+    String handle = (organizer.getHandle() == null || organizer.getHandle().isBlank())
+        ? null
+        : organizer.getHandle();
+    String displayName = (organizer.getDisplayName() == null || organizer.getDisplayName().isBlank())
+        ? "Deleted User"
+        : organizer.getDisplayName();
+
+    return new Organizer(displayName, handle);
+  }
+
+  private EventResponse toResponse(EventWithOrganizer eventWithOrganizer) {
+    Event event = eventWithOrganizer.event();
+
     return new EventResponse(
-        event.getId().toString(),
-        event.getTitle(),
-        event.getDescription(),
-        event.getVenue(),
-        event.getStartsAt(),
-        event.getEndsAt(),
-        event.getStatus()
+      event.getId().toString(),
+      event.getTitle(),
+      event.getDescription(),
+      event.getVenue(),
+      event.getStartsAt(),
+      event.getEndsAt(),
+      event.getStatus(),
+      organizerOrPlaceholder(eventWithOrganizer.organizer())
     );
   }
 

@@ -40,7 +40,7 @@ public class BookingController {
       ticketTypeQuantitiesById.merge(ticketTypeId, quantity, Integer::sum);
     }
 
-    BookingService.BookingResult result = bookingService.createBooking(
+    BookingService.BookingWithItems result = bookingService.createBooking(
       principal.userId(), 
       idempotencyKey, 
       ticketTypeQuantitiesById

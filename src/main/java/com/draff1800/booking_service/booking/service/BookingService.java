@@ -37,10 +37,10 @@ public class BookingService {
     this.bookingItemRepository = bookingItemRepository;
   }
 
-  public record BookingResult(Booking booking, List<BookingItem> items) {}
+  public record BookingWithItems(Booking booking, List<BookingItem> items) {}
 
   @Transactional
-  public BookingResult createBooking(
+  public BookingWithItems createBooking(
     UUID userId, 
     String idempotencyKey, 
     Map<UUID, Integer> quantitiesByTicketType
@@ -106,11 +106,11 @@ public class BookingService {
 
     bookingItems = bookingItemRepository.saveAll(bookingItems);
 
-    return new BookingResult(booking, bookingItems);
+    return new BookingWithItems(booking, bookingItems);
   }
 
   @Transactional(readOnly = true)
-  public Page<BookingResult> listMine(UUID userId, Pageable pageable) {
+  public Page<BookingWithItems> listMine(UUID userId, Pageable pageable) {
     Page<Booking> page = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
     List<UUID> bookingIds = page.getContent().stream()
@@ -126,13 +126,13 @@ public class BookingService {
             )
           );
 
-    return page.map(b -> new BookingResult(
+    return page.map(b -> new BookingWithItems(
         b,
         itemsByBookingId.getOrDefault(b.getId(), List.of())
     ));
   }
 
-  private Optional<BookingResult> getExistingBooking(UUID userId, String idempotencyKey) {
+  private Optional<BookingWithItems> getExistingBooking(UUID userId, String idempotencyKey) {
     if (idempotencyKey == null) {
       return Optional.empty();
     }
@@ -145,6 +145,6 @@ public class BookingService {
 
     var bookingItems = bookingItemRepository.findByBookingId(existingBooking.get().getId());  
 
-    return Optional.of(new BookingResult(existingBooking.get(), bookingItems));
+    return Optional.of(new BookingWithItems(existingBooking.get(), bookingItems));
   }
 }

@@ -21,6 +21,12 @@ public class User {
     @Column(nullable = false, length = 50)
     private UserRole role;
 
+    @Column(name = "handle", length = 50)
+    private String handle;
+
+    @Column(name = "display_name", length = 80)
+    private String displayName;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -29,10 +35,18 @@ public class User {
 
     protected User() {}
 
-    public User(String email, String passwordHash, UserRole role) {
+    public User(
+        String email, 
+        String passwordHash, 
+        UserRole role, 
+        String handle, 
+        String displayName
+    ) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
+        this.handle = handle;
+        this.displayName = displayName;
     }
 
     @PrePersist
@@ -53,4 +67,6 @@ public class User {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public UserRole getRole() { return role; }
+    public String getHandle() { return handle; }
+    public String getDisplayName() { return displayName; }
 }
