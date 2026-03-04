@@ -80,7 +80,7 @@ public class EventService {
 
   @Transactional(readOnly = true)
   public EventWithOrganizer get(UUID id) {
-    Event event = eventRepository.findById(id).orElseThrow(() -> new NotFoundException("Event not found"));
+    Event event = getEvent(id);
 
     User organizer = userRepository.findById(event.getCreatedBy()).orElse(null);
 
@@ -128,7 +128,7 @@ public class EventService {
 
   @Transactional
   public Event publish(UUID eventId, UUID requesterUserId) {
-    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+    Event event = getEvent(eventId);
 
     assertUserIsEventCreator(event, requesterUserId);
 
@@ -151,7 +151,7 @@ public class EventService {
     Instant endsAt
   ) {
 
-    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+    Event event = getEvent(eventId);
 
     assertUserIsEventCreator(event, requesterUserId);
     assertEventIsDraft(event, "Updating event");
@@ -170,7 +170,7 @@ public class EventService {
 
   @Transactional
   public Event cancel(UUID eventId, UUID requesterUserId) {
-    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+    Event event = getEvent(eventId);
 
     assertUserIsEventCreator(event, requesterUserId);
 
@@ -248,7 +248,7 @@ public class EventService {
     String idempotencyKey
   ) {
 
-    Event event = eventRepository.findById(eventId).orElseThrow(() -> new NotFoundException("Event not found"));
+    Event event = getEvent(eventId);
 
     assertUserIsEventCreator(event, requesterUserId);
     assertEventIsDraft(event, "Adding ticket types");
