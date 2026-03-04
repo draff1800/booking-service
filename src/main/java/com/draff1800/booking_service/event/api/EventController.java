@@ -100,6 +100,7 @@ public class EventController {
   public TicketTypeResponse addTicketType(
     @PathVariable UUID id,
     @AuthenticationPrincipal AuthPrincipal principal,
+    @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
     @Valid @RequestBody CreateTicketTypeRequest req
   ) {
     TicketType ticketType = eventService.addTicketType(
@@ -108,7 +109,8 @@ public class EventController {
         req.name(),
         req.priceMinor(),
         req.currency(),
-        req.capacityTotal()
+        req.capacityTotal(),
+        idempotencyKey
     );
     return toResponse(ticketType);
   }

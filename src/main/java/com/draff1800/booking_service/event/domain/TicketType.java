@@ -36,15 +36,26 @@ public class TicketType {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "idempotency_key", length = 100)
+  private String idempotencyKey;
+
   protected TicketType() {}
 
-  public TicketType(UUID eventId, String name, int priceMinor, String currency, int capacityTotal) {
+  public TicketType(
+    UUID eventId, 
+    String name, 
+    int priceMinor, 
+    String currency, 
+    int capacityTotal, 
+    String idempotencyKey
+  ) {
     this.eventId = eventId;
     this.name = name;
     this.priceMinor = priceMinor;
     this.currency = currency;
     this.capacityTotal = capacityTotal;
     this.capacityRemaining = capacityTotal;
+    this.idempotencyKey = idempotencyKey;
   }
 
   @PrePersist

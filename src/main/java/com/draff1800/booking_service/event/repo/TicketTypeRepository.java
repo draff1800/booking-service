@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TicketTypeRepository extends JpaRepository<TicketType, UUID> {
@@ -19,4 +20,6 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, UUID> {
     where ticketType.id = :ticketTypeId and ticketType.capacityRemaining >= :qty
   """)
   int decrementCapacityIfAvailable(@Param("ticketTypeId") UUID ticketTypeId, @Param("qty") int qty);
+
+  Optional<TicketType> findByEventIdAndIdempotencyKey(UUID eventId, String idempotencyKey);
 }

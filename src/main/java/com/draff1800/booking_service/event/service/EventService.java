@@ -174,24 +174,60 @@ public class EventService {
   }
 
   @Transactional
-  public TicketType addTicketType(UUID eventId, UUID requesterUserId, String name, int priceMinor, String currency, int capacityTotal) {
+  public TicketType addTicketType(
+    UUID eventId, 
+    UUID requesterUserId, 
+    String name, 
+    int priceMinor, 
+    String currency, 
+    int capacityTotal,
+    String idempotencyKey
+  ) {
+
     Event event = get(eventId);
 
-    if (!event.getCreatedBy().equals(requesterUserId)) {
-      throw new ForbiddenException("Only the event creator can add ticket types");
-    }
+    assertUserIsEventCreator(event, requesterUserId);
+    assertEventIsDraft(event, "Adding ticket types");
 
-    if (event.getStatus() != EventStatus.DRAFT) {
-      throw new ConflictException("Ticket types can only be added while event status is DRAFT");
-    }
+    String normalizedIKey = IdempotencyKeys.normalize(idempotencyKey);
 
+    var existingTicketType = getExistingTicketType(eventId, normalizedIKey);
+    if (existingTicketType.isPresent()) return existingTicketType.get();
+
+    String normalizedName = name.trim();
     String normalizedCurrency = currency.trim().toUpperCase();
-    TicketType tt = new TicketType(eventId, name.trim(), priceMinor, normalizedCurrency, capacityTotal);
-    return ticketTypeRepository.save(tt);
+
+    TicketType ticketType;
+    try {
+      ticketType = ticketTypeRepository.save(
+        new TicketType(eventId, normalizedName, priceMinor, normalizedCurrency, capacityTotal, normalizedIKey)
+      );
+    } catch (DataIntegrityViolationException exception) {
+      // Re-check for existing ticket-type in case same request was made twice concurrently
+      existingTicketType = getExistingTicketType(eventId, normalizedIKey);
+      if (existingTicketType.isPresent()) return existingTicketType.get();
+      throw exception;
+    }
+
+    return ticketType;
   }
 
   @Transactional(readOnly = true)
   public List<TicketType> listTicketTypes(UUID eventId) {
     return ticketTypeRepository.findByEventId(eventId);
+  }
+
+  private Optional<TicketType> getExistingTicketType(UUID eventId, String idempotencyKey) {
+    if (idempotencyKey == null) {
+      return Optional.empty();
+    }
+
+    var existingTicketType = ticketTypeRepository.findByEventIdAndIdempotencyKey(eventId, idempotencyKey);
+
+    if (existingTicketType.isEmpty()) {
+      return Optional.empty();
+    } 
+
+    return existingTicketType;
   }
 }
