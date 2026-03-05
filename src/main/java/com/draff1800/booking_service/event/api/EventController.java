@@ -5,13 +5,12 @@ import com.draff1800.booking_service.event.api.dto.request.CreateTicketTypeReque
 import com.draff1800.booking_service.event.api.dto.request.PatchEventRequest;
 import com.draff1800.booking_service.event.api.dto.response.TicketTypeResponse;
 import com.draff1800.booking_service.event.api.dto.response.eventResponse.EventResponse;
-import com.draff1800.booking_service.event.api.dto.response.eventResponse.Organizer;
+import com.draff1800.booking_service.event.api.mapper.EventResponseMapper;
+import com.draff1800.booking_service.event.api.mapper.TicketTypeResponseMapper;
 import com.draff1800.booking_service.event.domain.Event;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.service.EventService;
-import com.draff1800.booking_service.event.service.EventService.EventWithOrganizer;
 import com.draff1800.booking_service.security.jwt.AuthPrincipal;
-import com.draff1800.booking_service.user.domain.User;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -27,9 +26,17 @@ import java.util.UUID;
 public class EventController {
 
   private final EventService eventService;
+  private final EventResponseMapper eventResponseMapper;
+  private final TicketTypeResponseMapper ticketTypeResponseMapper;
 
-  public EventController(EventService eventService) {
+  public EventController(
+    EventService eventService,
+    EventResponseMapper eventResponseMapper,
+    TicketTypeResponseMapper ticketTypeResponseMapper
+  ) {
     this.eventService = eventService;
+    this.eventResponseMapper = eventResponseMapper;
+    this.ticketTypeResponseMapper = ticketTypeResponseMapper;
   }
 
   @PostMapping
@@ -49,28 +56,34 @@ public class EventController {
       idempotencyKey
     );
 
-    return toResponse(eventService.wrapWithOrganizer(event));
+    return eventResponseMapper.toResponse(
+      eventService.wrapWithOrganizer(event)
+    );
   }
 
   @PostMapping("/{id}/publish")
   public EventResponse publish(@PathVariable UUID id, @AuthenticationPrincipal AuthPrincipal principal) {
     Event event = eventService.publish(id, principal.userId());
-    return toResponse(eventService.wrapWithOrganizer(event));
+    return eventResponseMapper.toResponse(
+      eventService.wrapWithOrganizer(event)
+    );
   }
 
   @GetMapping("/{id}")
   public EventResponse get(@PathVariable UUID id) {
-    return toResponse(eventService.get(id));
+    return eventResponseMapper.toResponse(
+      eventService.get(id)
+    );
   }
 
   @GetMapping
   public Page<EventResponse> listPublicUpcoming(Pageable pageable) {
-    return eventService.listPublicUpcoming(pageable).map(this::toResponse);
+    return eventService.listPublicUpcoming(pageable).map(eventResponseMapper::toResponse);
   }
 
   @GetMapping("/mine")
   public Page<EventResponse> listMine(@AuthenticationPrincipal AuthPrincipal principal, Pageable pageable) {
-    return eventService.listMine(principal.userId(), pageable).map(this::toResponse);
+    return eventService.listMine(principal.userId(), pageable).map(eventResponseMapper::toResponse);
   }
 
   @PatchMapping("/{id}")
@@ -90,7 +103,9 @@ public class EventController {
         req.endsAt()
     );
 
-    return toResponse(eventService.wrapWithOrganizer(updatedEvent));
+    return eventResponseMapper.toResponse(
+      eventService.wrapWithOrganizer(updatedEvent)
+    );
   }
 
   @PostMapping("/{id}/cancel")
@@ -99,7 +114,10 @@ public class EventController {
     @AuthenticationPrincipal AuthPrincipal principal
   ) {
     Event event = eventService.cancel(id, principal.userId());
-    return toResponse(eventService.wrapWithOrganizer(event));
+
+    return eventResponseMapper.toResponse(
+      eventService.wrapWithOrganizer(event)
+    );
   }
 
   @PostMapping("/{id}/ticket-types")
@@ -118,53 +136,11 @@ public class EventController {
         req.capacityTotal(),
         idempotencyKey
     );
-    return toResponse(ticketType);
+    return ticketTypeResponseMapper.toResponse(ticketType);
   }
 
   @GetMapping("/{id}/ticket-types")
   public List<TicketTypeResponse> listTicketTypes(@PathVariable UUID id) {
-    return eventService.listTicketTypes(id).stream().map(this::toResponse).toList();
-  }
-
-  private Organizer organizerOrPlaceholder(User organizer) {
-    if (organizer == null) {
-      return new Organizer(null, "Deleted User");
-    }
-    
-    String handle = (organizer.getHandle() == null || organizer.getHandle().isBlank())
-        ? null
-        : organizer.getHandle();
-    String displayName = (organizer.getDisplayName() == null || organizer.getDisplayName().isBlank())
-        ? "Deleted User"
-        : organizer.getDisplayName();
-
-    return new Organizer(displayName, handle);
-  }
-
-  private EventResponse toResponse(EventWithOrganizer eventWithOrganizer) {
-    Event event = eventWithOrganizer.event();
-
-    return new EventResponse(
-      event.getId().toString(),
-      event.getTitle(),
-      event.getDescription(),
-      event.getVenue(),
-      event.getStartsAt(),
-      event.getEndsAt(),
-      event.getStatus(),
-      organizerOrPlaceholder(eventWithOrganizer.organizer())
-    );
-  }
-
-  private TicketTypeResponse toResponse(TicketType ticketType) {
-    return new TicketTypeResponse(
-      ticketType.getId().toString(),
-      ticketType.getEventId().toString(),
-      ticketType.getName(),
-      ticketType.getPriceMinor(),
-      ticketType.getCurrency(),
-      ticketType.getCapacityTotal(),
-      ticketType.getCapacityRemaining()
-    );
+    return eventService.listTicketTypes(id).stream().map(ticketTypeResponseMapper::toResponse).toList();
   }
 }

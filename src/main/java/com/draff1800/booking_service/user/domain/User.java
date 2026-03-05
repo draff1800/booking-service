@@ -69,4 +69,6 @@ public class User {
     public UserRole getRole() { return role; }
     public String getHandle() { return handle; }
     public String getDisplayName() { return displayName; }
+
+    public void setRole(UserRole role) { this.role = role; }
 }

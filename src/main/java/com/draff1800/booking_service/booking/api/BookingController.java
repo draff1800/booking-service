@@ -1,8 +1,8 @@
 package com.draff1800.booking_service.booking.api;
 
 import com.draff1800.booking_service.booking.api.dto.request.CreateBookingRequest;
-import com.draff1800.booking_service.booking.api.dto.response.BookingItemResponse;
 import com.draff1800.booking_service.booking.api.dto.response.BookingResponse;
+import com.draff1800.booking_service.booking.api.mapper.BookingResponseMapper;
 import com.draff1800.booking_service.booking.service.BookingService;
 import com.draff1800.booking_service.security.jwt.AuthPrincipal;
 import jakarta.validation.Valid;
@@ -21,9 +21,11 @@ import java.util.UUID;
 public class BookingController {
 
   private final BookingService bookingService;
+  private final BookingResponseMapper mapper;
 
-  public BookingController(BookingService bookingService) {
+  public BookingController(BookingService bookingService, BookingResponseMapper mapper) {
     this.bookingService = bookingService;
+    this.mapper = mapper;
   }
 
   @PostMapping
@@ -40,40 +42,19 @@ public class BookingController {
       ticketTypeQuantitiesById.merge(ticketTypeId, quantity, Integer::sum);
     }
 
-    BookingService.BookingWithItems result = bookingService.createBooking(
+    BookingService.BookingWithItems bookingWithItems = bookingService.createBooking(
       principal.userId(), 
       idempotencyKey, 
       ticketTypeQuantitiesById
     );
 
-    var bookingItems = result.items().stream()
-        .map(i -> new BookingItemResponse(
-            i.getTicketTypeId().toString(),
-            i.getQuantity(),
-            i.getUnitPriceMinor(),
-            i.getCurrency()
-        ))
-        .toList();
-
-    return new BookingResponse(
-        result.booking().getId().toString(),
-        result.booking().getStatus().name(),
-        bookingItems
-    );
+    return mapper.toResponse(bookingWithItems);
   }
 
   @GetMapping("/mine")
   public Page<BookingResponse> mine(@AuthenticationPrincipal AuthPrincipal principal, Pageable pageable) {
-    return bookingService.listMine(principal.userId(), pageable)
-      .map(booking -> new BookingResponse(
-        booking.booking().getId().toString(),
-        booking.booking().getStatus().name(),
-        booking.items().stream().map(bookingItem -> new BookingItemResponse(
-          bookingItem.getTicketTypeId().toString(),
-          bookingItem.getQuantity(),
-          bookingItem.getUnitPriceMinor(),
-          bookingItem.getCurrency()
-        )).toList()
-      ));
+    return bookingService.listMine(principal.userId(), pageable).map(
+      booking -> mapper.toResponse(booking)
+    );
   }
 }
