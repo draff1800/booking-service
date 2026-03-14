@@ -23,13 +23,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/events")
-public class EventController {
+public class EventsController {
 
   private final EventService eventService;
   private final EventResponseMapper eventResponseMapper;
   private final TicketTypeResponseMapper ticketTypeResponseMapper;
 
-  public EventController(
+  public EventsController(
     EventService eventService,
     EventResponseMapper eventResponseMapper,
     TicketTypeResponseMapper ticketTypeResponseMapper

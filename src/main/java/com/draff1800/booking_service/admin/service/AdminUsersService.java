@@ -12,11 +12,11 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Service
-public class AdminUserService {
+public class AdminUsersService {
 
   private final UserRepository userRepository;
 
-  public AdminUserService(UserRepository userRepository) {
+  public AdminUsersService(UserRepository userRepository) {
     this.userRepository = userRepository;
   }
 
