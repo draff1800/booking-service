@@ -5,5 +5,7 @@ import java.util.UUID;
 public record AuthPrincipal(
     UUID userId,
     String email,
-    String role
+    String role,
+    String handle,
+    String displayName
  ) {}

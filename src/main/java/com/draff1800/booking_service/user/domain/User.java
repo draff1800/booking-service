@@ -71,4 +71,6 @@ public class User {
     public String getDisplayName() { return displayName; }
 
     public void setRole(UserRole role) { this.role = role; }
+    public void setHandle(String handle) { this.handle = handle; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
 }

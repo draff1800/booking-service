@@ -5,7 +5,7 @@ import java.time.Instant;
 import jakarta.validation.constraints.Size;
 
 public record PatchEventRequest(
-  @Size(max = 200, message = "title must be less than 200 characters")
+  @Size(max = 200, message = "title must be 200 characters or less")
   String title,
   String description,
   String venue,

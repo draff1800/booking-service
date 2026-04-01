@@ -13,7 +13,9 @@ public class UserResponseMapper {
     return new UserResponse(
         user.getId().toString(),
         user.getEmail(),
-        user.getRole().name()
+        user.getRole().name(),
+        user.getHandle(),
+        user.getDisplayName()
     );
   }
 
@@ -21,7 +23,9 @@ public class UserResponseMapper {
     return new UserResponse(
         authPrincipal.userId().toString(),
         authPrincipal.email(),
-        authPrincipal.role()
+        authPrincipal.role(),
+        authPrincipal.handle(),
+        authPrincipal.displayName()
     );
   }
 }

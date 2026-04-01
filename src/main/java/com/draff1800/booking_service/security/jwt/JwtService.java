@@ -38,8 +38,10 @@ public class JwtService {
             .subject(user.getId().toString())
             .issuedAt(Date.from(currentInstant))
             .expiration(Date.from(expiryInstant))
-            .claim("Email", user.getEmail())
-            .claim("Role", user.getRole().name())
+            .claim("email", user.getEmail())
+            .claim("role", user.getRole().name())
+            .claim("handle", user.getHandle())
+            .claim("displayName", user.getDisplayName())
             .signWith(secretKey, Jwts.SIG.HS256)
             .compact();
     }

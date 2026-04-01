@@ -58,10 +58,10 @@ public class AuthService {
     }
 
     private String slugify(String input) {
-        String s = input.toLowerCase().trim();
-        s = s.replaceAll("[^a-z0-9]+", "-");
-        s = s.replaceAll("(^-|-$)", "");
-        return s;
+        String slugifiedString = input.toLowerCase().trim();
+        slugifiedString = slugifiedString.replaceAll("[^a-z0-9]+", "-");
+        slugifiedString = slugifiedString.replaceAll("(^-|-$)", "");
+        return slugifiedString;
     }
 
     private String uniqueHandleFor(String base) {

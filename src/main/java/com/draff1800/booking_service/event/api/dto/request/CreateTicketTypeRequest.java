@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 public record CreateTicketTypeRequest(
       @NotBlank(message = "name is required")
-      @Size(max = 100, message = "name must be less than 100 characters")
+      @Size(max = 100, message = "name must be 100 characters or less")
       String name,
 
       @NotNull(message = "priceMinor is required")
