@@ -1,7 +1,7 @@
 # Booking Service
 ![Development Status](https://img.shields.io/badge/status-in%20development-yellow)
 
-A Spring Boot 3 service for users to book tickets to events. Events can be created and managed by other users.
+A Spring Boot 3 service for users to book tickets to events, as well as create and manage their own.
 
 This is an enterprise-grade codebase aligned with industry best practices, demonstrating proficiency in backend development.
 
