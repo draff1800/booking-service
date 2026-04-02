@@ -22,6 +22,49 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
 
 ---
 
+### 🔌Endpoints
+#### Authentication
+| Route | Description                                     
+|-------|-------------
+| <kbd>POST /auth/register</kbd> | Register new User
+| <kbd>POST /auth/login</kbd> | Authenticate User via JSON Web Token (JWT)
+
+#### Events
+| Route | Description                                          
+|-------|-------------
+| <kbd>POST /events</kbd> | Register new Event
+| <kbd>PATCH /events/:id</kbd> | Update specific Event
+| <kbd>POST /events/:id/publish</kbd> | Publish specific Event
+| <kbd>POST /events/:id/cancel</kbd> | Cancel specific Event
+| <kbd>GET /events</kbd> | List Published upcoming Events (Pageable via `?page=x`)  
+| <kbd>GET /events/mine</kbd> | List User's Draft & Published Events (Pageable via `?page=x`)
+| <kbd>POST /events/:id/ticket-types</kbd> | Register new Ticket Type for specific Event
+| <kbd>GET /events/:id/ticket-types</kbd> | List Ticket Types for specific Event
+
+#### Bookings
+| Route | Description                                          
+|-------|-------------
+| <kbd>POST /bookings</kbd> | Register new Booking(s)
+| <kbd>GET /bookings/mine</kbd> | List User's Bookings (Pageable via `?page=x`)
+
+#### Users
+| Route | Description                                          
+|-------|-------------
+| <kbd>PATCH /users/me</kbd> | Update User details
+| <kbd>GET /me</kbd> | Get User details
+
+#### Admin
+| Route | Description                              
+|-------|-------------
+| <kbd>PATCH /admin/users/:id/role</kbd> | Update specific User's role
+
+#### Health
+| Route | Description                                          
+|-------|-------------
+| <kbd>GET /health</kbd> | Get server status
+
+---
+
 ### 🛠️Setup
 
 #### Getting Started

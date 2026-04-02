@@ -101,7 +101,7 @@ public class EventService {
   }
 
   @Transactional(readOnly = true)
-  public Page<EventWithOrganizer> listPublicUpcoming(Pageable pageable) {
+  public Page<EventWithOrganizer> listPublishedUpcoming(Pageable pageable) {
     Page<Event> page = eventRepository.findByStatusAndStartsAtAfterOrderByStartsAtAsc(
       EventStatus.PUBLISHED, 
       Instant.now(), 

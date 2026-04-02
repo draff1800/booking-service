@@ -77,8 +77,8 @@ public class EventsController {
   }
 
   @GetMapping
-  public Page<EventResponse> listPublicUpcoming(Pageable pageable) {
-    return eventService.listPublicUpcoming(pageable).map(eventResponseMapper::toResponse);
+  public Page<EventResponse> listPublishedUpcoming(Pageable pageable) {
+    return eventService.listPublishedUpcoming(pageable).map(eventResponseMapper::toResponse);
   }
 
   @GetMapping("/mine")

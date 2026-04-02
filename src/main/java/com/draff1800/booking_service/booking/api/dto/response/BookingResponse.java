@@ -5,5 +5,5 @@ import java.util.List;
 public record BookingResponse(
     String id,
     String status,
-    List<BookingItemResponse> item
+    List<BookingItemResponse> items
 ) {}
