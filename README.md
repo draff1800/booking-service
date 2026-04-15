@@ -23,8 +23,8 @@ Booking Service allows users to:
 - JUnit 5 & Mockito
 - Testcontainers (Integration testing)
 
-#### 📐 Architecture
-Utilises layered architecture:
+#### 🧩 Application Architecture
+Utilises layers:
 
 `Controller → Service → Repository → Database`
 
@@ -35,6 +35,66 @@ Utilises layered architecture:
 
 Clear separation of API (Interface), Domain (Core business logic) and Infrastructure (External systems e.g. Database).
 Improves testability, scalability and flexibility.
+
+#### 🏗️ System Architecture
+Envisaged as part of a wider system, including:
+* Load balancer/s paired with stateless API design, enabling horizontal scaling
+* Separate data layer, protecting business logic from data-access details
+
+```mermaid
+flowchart LR
+
+  Client["Clients<br/>(Postman / Frontends)"]
+
+  LB["Load Balancer"]
+
+  subgraph API["Spring Boot API"]
+    direction TB
+
+    Security["JWT Security (Stateless)"]
+
+    subgraph Controllers["Controllers"]
+      Auth["Auth"]
+      Event["Event"]
+      Booking["Booking"]
+      User["User"]
+      Admin["Admin"]
+      Health["Health"]
+    end
+
+    Services["Services <br/>(Authorization, validation...)"]
+    Repositories["Repositories"]
+  end
+
+  subgraph Database[PostgreSQL DB]
+    Users[(users)]
+    Events[(events)]
+    Bookings[(bookings)]
+    TicketTypes[(ticket_types)]
+    BookingItems[(booking_items)]
+  end
+
+  Client -->|HTTP / JSON| LB
+  LB --> Auth
+  LB --> Event
+  LB --> Booking
+  LB --> User
+  LB --> Admin
+  LB --> Health
+
+  Auth --> Security
+  Event --> Security
+  Booking --> Security
+  User --> Security
+  Admin ---> Security
+
+  Security --> Services
+  Services --> Repositories
+
+  Repositories --> Database
+
+  Auth -->|JWT| Client
+```
 
 #### 🗂️ Domain Modelling
 Key Entities:
