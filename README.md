@@ -51,7 +51,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
 | Route | Description                                          
 |-------|-------------
 | <kbd>PATCH /users/me</kbd> | Update User details
-| <kbd>GET /me</kbd> | Get User details
+| <kbd>GET /users/me</kbd> | Get User details
 
 #### Admin
 | Route | Description                              
