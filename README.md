@@ -65,7 +65,7 @@ For example, Event responses expose:
 
 ```json
 {
-  ...  
+  ...
   "organizer": {
     "displayName": "Dylan Rafferty",
     "handle": "dylan-rafferty"
