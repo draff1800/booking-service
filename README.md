@@ -91,23 +91,14 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
       - `POSTGRES_PORT`: Database port (E.g. `5432`)
       - `JWT_SECRET`: String for authorization (At least 32 characters long)
       - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
+			
+3. Load `.env` in to the shell for use by `application.properties`:
 
-3. Set up `application-local.properties` environment variables:
-    - Create a `src/main/resources/application-local.properties`:
-
-      ```bash
-      cp src/main/resources/application-local.properties.example src/main/resources/application-local.properties
-      ```
-
-    - Adjust the following values to match those from `.env`:
-
-        - `example-host` ⬅️ `POSTGRES_HOST`
-        - `0000` ⬅️ `POSTGRES_PORT`
-        - `example-database-name` ⬅️ `POSTGRES_DB`
-        - `example-user` ⬅️ `POSTGRES_USER`
-        - `example-password` ⬅️ `POSTGRES_PASSWORD`
-        - `example-jwt-secret` ⬅️ `JWT_SECRET`
-        - `example-jwt-time-to-live-seconds` ⬅️ `JWT_TIME_TO_LIVE_SECONDS`
+    ```bash
+    set -a
+    source .env
+    set +a
+	  ```
 
 #### Local Development
 1. Install the following prerequisites:
@@ -125,7 +116,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
 4. Run the service (on [localhost:8080](http://localhost:8080)):
 
     ```bash
-    ./gradlew bootRun --args='--spring.profiles.active=local'
+    ./gradlew bootRun
     ```
 
 5. When you stop the service, remember to stop the database too:
