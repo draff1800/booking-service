@@ -92,7 +92,7 @@ This is an enterprise-grade codebase aligned with industry best practices, demon
       - `JWT_SECRET`: String for authorization (At least 32 characters long)
       - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
 			
-3. Load `.env` in to the shell for use by `application.properties`:
+3. Load `.env` for use by `application.properties`:
 
     ```bash
     set -a
