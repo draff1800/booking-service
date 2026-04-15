@@ -28,7 +28,7 @@ public class EventResponseMapper {
 
     private Organizer getOrganizerDetails(User organizer) {
         if (organizer == null) {
-        return new Organizer(null, "Deleted User");
+            return new Organizer(null, "Deleted User");
         }
         
         String handle = (organizer.getHandle() == null || organizer.getHandle().isBlank())

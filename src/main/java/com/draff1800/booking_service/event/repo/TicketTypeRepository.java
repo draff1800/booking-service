@@ -15,9 +15,9 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, UUID> {
 
   @Modifying
   @Query("""
-    update TicketType ticketType
-    set ticketType.capacityRemaining = ticketType.capacityRemaining - :qty
-    where ticketType.id = :ticketTypeId and ticketType.capacityRemaining >= :qty
+    UPDATE TicketType ticketType
+    SET ticketType.capacityRemaining = ticketType.capacityRemaining - :qty
+    WHERE ticketType.id = :ticketTypeId and ticketType.capacityRemaining >= :qty
   """)
   int decrementCapacityIfAvailable(@Param("ticketTypeId") UUID ticketTypeId, @Param("qty") int qty);
 

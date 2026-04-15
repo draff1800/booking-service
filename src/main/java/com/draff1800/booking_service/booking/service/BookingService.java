@@ -126,9 +126,9 @@ public class BookingService {
             )
           );
 
-    return page.map(b -> new BookingWithItems(
-        b,
-        itemsByBookingId.getOrDefault(b.getId(), List.of())
+    return page.map(booking -> new BookingWithItems(
+        booking,
+        itemsByBookingId.getOrDefault(booking.getId(), List.of())
     ));
   }
 
