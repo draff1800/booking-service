@@ -24,7 +24,7 @@ Booking Service allows users to:
 - Testcontainers (Integration testing)
 
 #### 🧩 Application Architecture
-Utilises layers:
+Organised across layers:
 
 `Controller → Service → Repository → Database`
 
