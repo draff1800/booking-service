@@ -162,7 +162,8 @@ Only `ADMIN`s can change the role of another User.
     WHERE ticketType.id = :ticketTypeId and ticketType.capacityRemaining >= :qty
     ```
 
-    Guarantees:
+    Also validates quantities and reserves Ticket Types in consistent order, reducing deadlock risk when concurrent requests contain the same items in different orders.
+
     * No overselling
     * Safety under high concurrency
     * Enforcement at DB level
