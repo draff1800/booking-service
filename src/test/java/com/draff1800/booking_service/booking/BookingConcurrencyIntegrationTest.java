@@ -87,7 +87,7 @@ class BookingConcurrencyIntegrationTest {
     User organizer = userRepository.save(
         new User(
             "organizer@example.com",
-            "hashed-password",
+            "example-password",
             UserRole.USER,
             "organizer",
             "Organizer"
@@ -97,7 +97,7 @@ class BookingConcurrencyIntegrationTest {
     User buyer = userRepository.save(
         new User(
             "buyer@example.com",
-            "hashed-password",
+            "example-password",
             UserRole.USER,
             "buyer",
             "Buyer"
@@ -120,7 +120,7 @@ class BookingConcurrencyIntegrationTest {
         new TicketType(
             event.getId(),
             "General Admission",
-            2500,
+            1000,
             "GBP",
             capacity,
             null
@@ -188,5 +188,137 @@ class BookingConcurrencyIntegrationTest {
         .sum();
 
     assertThat(totalBookedQuantity).isEqualTo(capacity);
+  }
+
+  @Test
+  void concurrentMultiTicketBookings_doNotOversellOrDeadlockWhenRequestOrderDiffers() throws Exception {
+    // ARRANGE
+    int capacityPerTicketType = 5;
+    int attempts = 20;
+
+    User organizer = userRepository.save(
+        new User(
+            "organizer@example.com",
+            "example-password",
+            UserRole.USER,
+            "organizer",
+            "Organizer"
+        )
+    );
+
+    User buyer = userRepository.save(
+        new User(
+            "buyer@example.com",
+            "example-password",
+            UserRole.USER,
+            "buyer",
+            "Buyer"
+        )
+    );
+
+    Event event = eventRepository.save(
+        new Event(
+            "Multi Ticket Concurrency Test Event",
+            "Tests stable reservation ordering",
+            "London",
+            Instant.now().plusSeconds(3600),
+            Instant.now().plusSeconds(7200),
+            organizer.getId(),
+            null
+        )
+    );
+
+    TicketType ticketType1 = ticketTypeRepository.save(
+        new TicketType(
+            event.getId(),
+            "Standard",
+            1000,
+            "GBP",
+            capacityPerTicketType,
+            null
+        )
+    );
+
+    TicketType ticketType2 = ticketTypeRepository.save(
+        new TicketType(
+            event.getId(),
+            "VIP",
+            5000,
+            "GBP",
+            capacityPerTicketType,
+            null
+        )
+    );
+
+    UUID buyerId = buyer.getId();
+    UUID ticketType1Id = ticketType1.getId();
+    UUID ticketType2Id = ticketType2.getId();
+
+    AtomicInteger successCount = new AtomicInteger(0);
+    AtomicInteger conflictCount = new AtomicInteger(0);
+    AtomicInteger unexpectedFailureCount = new AtomicInteger(0);
+
+    ExecutorService executor = Executors.newFixedThreadPool(attempts);
+    CountDownLatch ready = new CountDownLatch(attempts);
+    CountDownLatch start = new CountDownLatch(1);
+    CountDownLatch done = new CountDownLatch(attempts);
+
+    // ACT
+    try {
+      for (int i = 0; i < attempts; i++) {
+        int attemptNumber = i;
+        executor.submit(() -> {
+          ready.countDown();
+          try {
+            start.await();
+
+            Map<UUID, Integer> quantitiesByTicketTypeId = attemptNumber % 2 == 0
+                ? Map.of(ticketType1Id, 1, ticketType2Id, 1)
+                : Map.of(ticketType2Id, 1, ticketType1Id, 1);
+
+            bookingService.createBooking(buyerId, null, quantitiesByTicketTypeId);
+
+            successCount.incrementAndGet();
+          } catch (ConflictException e) {
+            conflictCount.incrementAndGet();
+          } catch (Exception e) {
+            unexpectedFailureCount.incrementAndGet();
+          } finally {
+            done.countDown();
+          }
+          return null;
+        });
+      }
+
+      ready.await(10, TimeUnit.SECONDS);
+      start.countDown();
+      done.await(30, TimeUnit.SECONDS);
+    } finally {
+      executor.shutdownNow();
+    }
+
+    // ASSERT
+    TicketType refreshedTicketType1 = ticketTypeRepository.findById(ticketType1Id).orElseThrow();
+    TicketType refreshedTicketType2 = ticketTypeRepository.findById(ticketType2Id).orElseThrow();
+
+    assertThat(successCount.get()).isEqualTo(capacityPerTicketType);
+    assertThat(conflictCount.get()).isEqualTo(attempts - capacityPerTicketType);
+    assertThat(unexpectedFailureCount.get()).isZero();
+
+    assertThat(refreshedTicketType1.getCapacityRemaining()).isZero();
+    assertThat(refreshedTicketType2.getCapacityRemaining()).isZero();
+
+    List<BookingItem> bookingItems = bookingItemRepository.findAll();
+    int totalTicketType1Booked = bookingItems.stream()
+        .filter(item -> item.getTicketTypeId().equals(ticketType1Id))
+        .mapToInt(BookingItem::getQuantity)
+        .sum();
+    int totalTicketType2Booked = bookingItems.stream()
+        .filter(item -> item.getTicketTypeId().equals(ticketType2Id))
+        .mapToInt(BookingItem::getQuantity)
+        .sum();
+
+    assertThat(totalTicketType1Booked).isEqualTo(capacityPerTicketType);
+    assertThat(totalTicketType2Booked).isEqualTo(capacityPerTicketType);
   }
 }

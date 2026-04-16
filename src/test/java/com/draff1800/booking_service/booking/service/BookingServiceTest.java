@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,7 +37,23 @@ class BookingServiceTest {
   private BookingService bookingService;
 
   @Test
-  void createBooking_throwsConflict_whenCapacityCannotBeReserved() {
+  void createBooking_throwsConflict_whenQuantityIsNotPositive() {
+    // ARRANGE
+    UUID userId = UUID.randomUUID();
+    UUID ticketTypeId = UUID.randomUUID();
+
+    // ACT & ASSERT
+    assertThatThrownBy(() ->
+        bookingService.createBooking(userId, null, Map.of(ticketTypeId, 0))
+    )
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("Booking quantities must be positive for ticketTypeIds=[" + ticketTypeId + "]");
+
+    verifyNoInteractions(ticketTypeRepository, bookingRepository, bookingItemRepository);
+  }
+
+  @Test
+  void createBooking_throwsConflict_whenNoCapacityRemaining() {
     // ARRANGE
     UUID userId = UUID.randomUUID();
     UUID ticketTypeId = UUID.randomUUID();
@@ -102,6 +119,42 @@ class BookingServiceTest {
 
     verify(bookingRepository).save(any());
     verify(bookingItemRepository).saveAll(any());
+  }
+
+  @Test
+  void createBooking_reservesTicketTypesInStableOrder() {
+    // ARRANGE
+    UUID userId = UUID.randomUUID();
+    UUID ticketType1Id = UUID.fromString("00000000-0000-0000-0000-0000000001aa");
+    UUID ticketType2Id = UUID.fromString("00000000-0000-0000-0000-0000000002bb");
+
+    TicketType ticketType1 = mock(TicketType.class);
+    when(ticketType1.getId()).thenReturn(ticketType1Id);
+    when(ticketType1.getPriceMinor()).thenReturn(2500);
+    when(ticketType1.getCurrency()).thenReturn("GBP");
+
+    TicketType ticketType2 = mock(TicketType.class);
+    when(ticketType2.getId()).thenReturn(ticketType2Id);
+    when(ticketType2.getPriceMinor()).thenReturn(3500);
+    when(ticketType2.getCurrency()).thenReturn("GBP");
+
+    when(ticketTypeRepository.findAllById(List.of(ticketType2Id, ticketType1Id)))
+        .thenReturn(List.of(ticketType2, ticketType1));
+    when(ticketTypeRepository.decrementCapacityIfAvailable(any(), anyInt())).thenReturn(1);
+
+    Booking booking = mock(Booking.class);
+    when(booking.getId()).thenReturn(UUID.randomUUID());
+
+    when(bookingRepository.save(any())).thenReturn(booking);
+    when(bookingItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    // ACT
+    bookingService.createBooking(userId, null, Map.of(ticketType2Id, 1, ticketType1Id, 1));
+
+    // ASSERT
+    InOrder inOrder = inOrder(ticketTypeRepository);
+    inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType1Id, 1);
+    inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType2Id, 1);
   }
 
   @Test

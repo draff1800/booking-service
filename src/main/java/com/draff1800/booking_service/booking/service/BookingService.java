@@ -50,6 +50,8 @@ public class BookingService {
       throw new ConflictException("No booking items provided");
     }
 
+    validateQuantities(quantitiesByTicketType);
+
     String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
 
     var existingBooking = getExistingBooking(userId, normalisedIKey);
@@ -64,7 +66,11 @@ public class BookingService {
       throw new NotFoundException("The following ticket type(s) were not found: " + missing);
     }
 
-    for (Entry<UUID, Integer> entry : quantitiesByTicketType.entrySet()) {
+    List<Entry<UUID, Integer>> sortedQuantitiesByTicketType = quantitiesByTicketType.entrySet().stream()
+      .sorted(Entry.comparingByKey())
+      .toList();
+
+    for (Entry<UUID, Integer> entry : sortedQuantitiesByTicketType) {
       UUID ticketTypeId = entry.getKey();
       int quantity = entry.getValue();
 
@@ -146,5 +152,16 @@ public class BookingService {
     var bookingItems = bookingItemRepository.findByBookingId(existingBooking.get().getId());  
 
     return Optional.of(new BookingWithItems(existingBooking.get(), bookingItems));
+  }
+
+  private void validateQuantities(Map<UUID, Integer> quantitiesByTicketType) {
+    List<UUID> invalidTicketTypeIds = quantitiesByTicketType.entrySet().stream()
+      .filter(entry -> entry.getValue() == null || entry.getValue() <= 0)
+      .map(Entry::getKey)
+      .toList();
+
+    if (!invalidTicketTypeIds.isEmpty()) {
+      throw new ConflictException("Booking quantities must be positive for ticketTypeIds=" + invalidTicketTypeIds);
+    }
   }
 }
