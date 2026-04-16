@@ -336,7 +336,6 @@ Only `ADMIN`s can change the role of another User.
 * RabbitMQ integration (Asynchronous processing)
 * Resilience improvements (E.g. Rate limiting)
 * Spring Actuator integration (Monitoring)
-* Concurrency enhancements (E.g. Optimistic locking)
 * OpenAPI integration (API documentation)
 * Automated code quality checks
 * General functionality additions
