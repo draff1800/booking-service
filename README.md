@@ -298,8 +298,8 @@ Strategy:
       - `POSTGRES_HOST`: Database host (E.g. `localhost`)
       - `POSTGRES_PORT`: Database port (E.g. `5432`)
       - `REDIS_ENABLED`: Whether caching is enabled (E.g. `GET /events`)
-      - `REDIS_HOST`: Cache server host (E.g. `localhost`)
-      - `REDIS_PORT`: Cache server port (E.g. `6379`)
+      - `REDIS_HOST`: Cache host (E.g. `localhost`)
+      - `REDIS_PORT`: Cache port (E.g. `6379`)
       - `JWT_SECRET`: String for authorization (At least 32 characters long)
       - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
 			
@@ -318,7 +318,7 @@ Strategy:
 
 2. Run Docker Desktop
 
-3. Run the database and cache server:
+3. Run the database and cache:
 
     ```bash
     docker compose up -d
