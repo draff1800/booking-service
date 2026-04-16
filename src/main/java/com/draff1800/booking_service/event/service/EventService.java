@@ -4,6 +4,7 @@ import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.ForbiddenException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.common.idempotency.IdempotencyKeys;
+import com.draff1800.booking_service.config.CacheConfig;
 import com.draff1800.booking_service.event.domain.Event;
 import com.draff1800.booking_service.event.domain.EventStatus;
 import com.draff1800.booking_service.event.domain.TicketType;
@@ -13,6 +14,9 @@ import com.draff1800.booking_service.user.domain.User;
 import com.draff1800.booking_service.user.repo.UserRepository;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
@@ -79,6 +83,7 @@ public class EventService {
   }
 
   @Transactional(readOnly = true)
+  @Cacheable(cacheNames = CacheConfig.EVENT_DETAIL_CACHE, key = "#id")
   public EventWithOrganizer get(UUID id) {
     Event event = getEvent(id);
 
@@ -101,6 +106,10 @@ public class EventService {
   }
 
   @Transactional(readOnly = true)
+  @Cacheable(
+    cacheNames = CacheConfig.PUBLISHED_UPCOMING_EVENTS_CACHE,
+    key = "'page=' + #pageable.pageNumber + ':size=' + #pageable.pageSize + ':sort=' + #pageable.sort.toString()"
+  )
   public Page<EventWithOrganizer> listPublishedUpcoming(Pageable pageable) {
     Page<Event> page = eventRepository.findByStatusAndStartsAtAfterOrderByStartsAtAsc(
       EventStatus.PUBLISHED, 
@@ -127,6 +136,10 @@ public class EventService {
   }
 
   @Transactional
+  @Caching(evict = {
+    @CacheEvict(cacheNames = CacheConfig.EVENT_DETAIL_CACHE, key = "#eventId"),
+    @CacheEvict(cacheNames = CacheConfig.PUBLISHED_UPCOMING_EVENTS_CACHE, allEntries = true)
+  })
   public Event publish(UUID eventId, UUID requesterUserId) {
     Event event = getEvent(eventId);
 
@@ -141,6 +154,10 @@ public class EventService {
   }
 
   @Transactional
+  @Caching(evict = {
+    @CacheEvict(cacheNames = CacheConfig.EVENT_DETAIL_CACHE, key = "#eventId"),
+    @CacheEvict(cacheNames = CacheConfig.PUBLISHED_UPCOMING_EVENTS_CACHE, allEntries = true)
+  })
   public Event updateDetails(
     UUID eventId, 
     UUID requesterUserId,
@@ -169,6 +186,10 @@ public class EventService {
   }
 
   @Transactional
+  @Caching(evict = {
+    @CacheEvict(cacheNames = CacheConfig.EVENT_DETAIL_CACHE, key = "#eventId"),
+    @CacheEvict(cacheNames = CacheConfig.PUBLISHED_UPCOMING_EVENTS_CACHE, allEntries = true)
+  })
   public Event cancel(UUID eventId, UUID requesterUserId) {
     Event event = getEvent(eventId);
 

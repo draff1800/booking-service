@@ -19,6 +19,7 @@ Booking Service allows users to:
 - Spring Boot 3
 - Spring Security (JWT)
 - PostgreSQL
+- Redis
 - Docker
 - JUnit 5 & Mockito
 - Testcontainers (Integration testing)
@@ -45,7 +46,6 @@ Envisaged as part of a wider system, including:
 flowchart LR
 
   Client["Clients<br/>(Postman / Frontends)"]
-
   LB["Load Balancer"]
 
   subgraph API["Spring Boot API"]
@@ -64,14 +64,12 @@ flowchart LR
 
     Services["Services <br/>(Authorization, validation...)"]
     Repositories["Repositories"]
+    Cache["Cache Abstraction"]
   end
 
-  subgraph Database[PostgreSQL DB]
-    Users[(users)]
-    Events[(events)]
-    Bookings[(bookings)]
-    TicketTypes[(ticket_types)]
-    BookingItems[(booking_items)]
+  subgraph Infra["Infrastructure"]
+    Redis[("Redis Cache")]
+    Postgres[(PostgreSQL DB)]
   end
 
   Client -->|HTTP / JSON| LB
@@ -86,12 +84,14 @@ flowchart LR
   Event --> Security
   Booking --> Security
   User --> Security
-  Admin ---> Security
+  Admin --> Security
 
   Security --> Services
   Services --> Repositories
+  Services --> Cache
 
-  Repositories --> Database
+  Cache --> Redis
+  Repositories --> Postgres
 
   Auth -->|JWT| Client
 ```
@@ -152,6 +152,22 @@ For example, `PATCH /admin/users/{id}/role` has:
 
 Only `ADMIN`s can change the role of another User.
 
+#### 💾 Caching
+Redis is used as a read-through cache for public, read-heavy endpoints where stale data is acceptable for a short period.
+
+Current usage:
+| Endpoint | TTL (Time To Live)                               
+|----------|-------------------
+| `GET /events` | 45 seconds
+| `GET /events/:id` | 5 minutes
+
+Strategy:
+- Caches stable, shared reads with high re-use
+- Does not cache Booking writes
+- Does not cache paths that expose tickets' `capacityRemaining`
+- Invalidates cache upon Event Update, Publish or Cancel
+- If Redis is unavailable, requests fall through to PostgreSQL
+
 #### ✨ Other Features
 1. **Oversell Protection (Concurrency-Safe)**
     Ticket booking uses atomic database updates:
@@ -206,8 +222,10 @@ Only `ADMIN`s can change the role of another User.
     Prevents performance degradation at scale.
 
 #### 🧪 Testing
-* **Unit:** Verifies business logic via service-layer, mock-based tests.
-* **Integration:** Verifies concurrent booking correctness against PostgreSQL via `@TestContainers`.
+* **Unit:** Verifies business logic in isolation using JUnit and Mockito.
+* **Framework Integration:** Verifies Spring-managed behaviour (e.g. caching) using a lightweight Spring test context with mocked repositories.
+* **Infrastructure Integration:** Verifies persistence and concurrency behaviour against PostgreSQL using `@Testcontainers`.
+
 
 ---
 
@@ -225,8 +243,9 @@ Only `ADMIN`s can change the role of another User.
 | <kbd>PATCH /events/:id</kbd> | Update specific Event
 | <kbd>POST /events/:id/publish</kbd> | Publish specific Event
 | <kbd>POST /events/:id/cancel</kbd> | Cancel specific Event
-| <kbd>GET /events</kbd> | List Published upcoming Events (Pageable via `?page=x&size=y`)  
+| <kbd>GET /events</kbd> | List Published upcoming Events (Pageable via `?page=x&size=y`)
 | <kbd>GET /events/mine</kbd> | List User's Draft & Published Events (Pageable via `?page=x&size=y`)
+| <kbd>GET /events/:id</kbd> | Get specific Event
 | <kbd>POST /events/:id/ticket-types</kbd> | Register new Ticket Type for specific Event
 | <kbd>GET /events/:id/ticket-types</kbd> | List Ticket Types for specific Event
 
@@ -239,8 +258,8 @@ Only `ADMIN`s can change the role of another User.
 #### Users
 | Route | Description                                          
 |-------|-------------
-| <kbd>PATCH /users/me</kbd> | Update User details
-| <kbd>GET /users/me</kbd> | Get User details
+| <kbd>PATCH /users/me</kbd> | Update current User details
+| <kbd>GET /users/me</kbd> | Get current User
 
 #### Admin
 | Route | Description                              
@@ -278,6 +297,9 @@ Only `ADMIN`s can change the role of another User.
       - `POSTGRES_PASSWORD`: Database User password
       - `POSTGRES_HOST`: Database host (E.g. `localhost`)
       - `POSTGRES_PORT`: Database port (E.g. `5432`)
+      - `REDIS_ENABLED`: Whether caching is enabled (E.g. `GET /events`)
+      - `REDIS_HOST`: Cache server host (E.g. `localhost`)
+      - `REDIS_PORT`: Cache server port (E.g. `6379`)
       - `JWT_SECRET`: String for authorization (At least 32 characters long)
       - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
 			
@@ -296,7 +318,7 @@ Only `ADMIN`s can change the role of another User.
 
 2. Run Docker Desktop
 
-3. Run the database:
+3. Run the database and cache server:
 
     ```bash
     docker compose up -d
@@ -332,7 +354,6 @@ Only `ADMIN`s can change the role of another User.
 ---
 
 ### 🌱 Future Improvements
-* Redis integration (Caching)
 * RabbitMQ integration (Asynchronous processing)
 * Resilience improvements (E.g. Rate limiting)
 * Spring Actuator integration (Monitoring)

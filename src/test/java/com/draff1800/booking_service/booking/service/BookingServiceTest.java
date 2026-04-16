@@ -138,7 +138,7 @@ class BookingServiceTest {
     when(ticketType2.getPriceMinor()).thenReturn(3500);
     when(ticketType2.getCurrency()).thenReturn("GBP");
 
-    when(ticketTypeRepository.findAllById(List.of(ticketType2Id, ticketType1Id)))
+    when(ticketTypeRepository.findAllById(any()))
         .thenReturn(List.of(ticketType2, ticketType1));
     when(ticketTypeRepository.decrementCapacityIfAvailable(any(), anyInt())).thenReturn(1);
 
