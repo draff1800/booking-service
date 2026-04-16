@@ -40,7 +40,7 @@ Improves testability, scalability and flexibility.
 #### 🏗️ System Architecture
 Envisaged as part of a wider system, including:
 * Load balancer/s paired with stateless API design, enabling horizontal scaling
-* Separate data layer, protecting business logic from data-access details
+* Separate infrastructure layer, protecting business logic from data-access details
 
 ```mermaid
 flowchart LR
