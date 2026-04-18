@@ -3,7 +3,7 @@
 
 A Spring Boot 3 service for users to book tickets to events, as well as create and manage their own.
 
-This is an enterprise-grade codebase aligned with industry best practices, demonstrating proficiency in backend development.
+This is an enterprise-grade codebase aligned with industry best practices, demonstrating expertise in backend development.
 
 ### ℹ️ Overview
 Booking Service allows users to:
@@ -20,21 +20,26 @@ Booking Service allows users to:
 - Spring Security (JWT)
 - PostgreSQL
 - Redis
+- RabbitMQ
 - Docker
 - JUnit 5 & Mockito
 - Testcontainers (Integration testing)
 
 #### 🧩 Application Architecture
-Organised across layers:
+Core functionality organised across layers:
 
-`Controller → Service → Repository → Database`
+`Controller → Service → Repository`
 
 - Controllers handle HTTP requests and DTO (Data Transfer Object) mapping
 - Services handle business logic
 - Repositories handle persistence logic
-- Database holds data
 
-Clear separation of API (Interface), Domain (Core business logic) and Infrastructure (External systems e.g. Database).
+Supporting infrastructure:
+- PostgreSQL for storing transactional data
+- Redis for cache-backed reads
+- RabbitMQ for asynchronous follow-up processing
+
+Clear separation of API (Interface), Domain (Core business logic) and Infrastructure.
 Improves testability, scalability and flexibility.
 
 #### 🏗️ System Architecture
@@ -65,11 +70,14 @@ flowchart LR
     Services["Services <br/>(Authorization, validation...)"]
     Repositories["Repositories"]
     Cache["Cache Abstraction"]
+    Outbox["Message Publisher"]
+    Consumer["Message Consumer"]
   end
 
   subgraph Infra["Infrastructure"]
     Redis[("Redis Cache")]
     Postgres[(PostgreSQL DB)]
+    RabbitMQ[("RabbitMQ Broker")]
   end
 
   Client -->|HTTP / JSON| LB
@@ -89,9 +97,14 @@ flowchart LR
   Security --> Services
   Services --> Repositories
   Services --> Cache
+  Services --> Outbox
 
   Cache --> Redis
   Repositories --> Postgres
+  Outbox --> Postgres
+  Outbox --> RabbitMQ
+  RabbitMQ --> Consumer
+  Consumer --> Postgres
 
   Auth -->|JWT| Client
 ```
@@ -162,11 +175,25 @@ Current usage:
 | `GET /events/:id` | 5 minutes
 
 Strategy:
-- Caches stable, shared reads with high re-use
-- Does not cache Booking writes
-- Does not cache paths that expose tickets' `capacityRemaining`
-- Invalidates cache upon Event Update, Publish or Cancel
-- If Redis is unavailable, requests fall through to PostgreSQL
+- Cache stable, shared reads with high re-use
+- Do not cache Booking writes
+- Do not cache paths that expose tickets' `capacityRemaining`
+- Invalidate cache upon Event Update, Publish or Cancel
+- If Redis unavailable, requests fall through to PostgreSQL
+
+#### ✉️ Messaging
+RabbitMQ is used for asynchronous follow-up work after a booking is confirmed. The flow is:
+
+1. `POST /bookings` saves a booking to PostgreSQL
+2. A `booking.confirmed.v1` message is saved in the same transaction
+3. `OutboxEventPublisher` detects the message and sends it to RabbitMQ
+4. RabbitMQ directs the message to a queue (`booking.notification.booking-confirmed.v1`)
+4. `BookingConfirmationListener` detects the queued message and saves a dispatch to the DB (Placeholder behaviour for e.g. Sending an e-mail)
+
+The Outbox pattern (saving message-related info the DB) is utilised:
+- Avoids dual-write issues between PostgreSQL and RabbitMQ
+- Ensures messages are only published after booking transactions succeed
+- Message publish failures can retry without losing booking info
 
 #### ✨ Other Features
 1. **Oversell Protection (Concurrency-Safe)**
@@ -223,9 +250,8 @@ Strategy:
 
 #### 🧪 Testing
 * **Unit:** Verifies business logic in isolation using JUnit and Mockito.
-* **Framework Integration:** Verifies Spring-managed behaviour (e.g. caching) using a lightweight Spring test context with mocked repositories.
+* **Framework Integration:** Verifies Spring-managed behaviour (e.g. caching, messaging) using lightweight Spring test context with mocked repositories.
 * **Infrastructure Integration:** Verifies persistence and concurrency behaviour against PostgreSQL using `@Testcontainers`.
-
 
 ---
 
@@ -295,12 +321,18 @@ Strategy:
       - `POSTGRES_DB`: Database name
       - `POSTGRES_USER`: Database User username
       - `POSTGRES_PASSWORD`: Database User password
-      - `POSTGRES_HOST`: Database host (E.g. `localhost`)
-      - `POSTGRES_PORT`: Database port (E.g. `5432`)
-      - `REDIS_ENABLED`: Whether caching is enabled (E.g. `GET /events`)
-      - `REDIS_HOST`: Cache host (E.g. `localhost`)
-      - `REDIS_PORT`: Cache port (E.g. `6379`)
-      - `JWT_SECRET`: String for authorization (At least 32 characters long)
+      - `POSTGRES_HOST`: Database host (e.g. `localhost`)
+      - `POSTGRES_PORT`: Database port (e.g. `5432`)
+      - `REDIS_ENABLED`: Whether caching is enabled (e.g. in `GET /events`)
+      - `REDIS_HOST`: Cache host (e.g. `localhost`)
+      - `REDIS_PORT`: Cache port (e.g. `6379`)
+      - `RABBITMQ_ENABLED`: Whether messaging is enabled (e.g. in `POST /bookings`)
+      - `RABBITMQ_OUTBOX_PUBLISH_DELAY_MS`: How often unpublished messages are published
+      - `RABBITMQ_HOST`: Broker host (e.g. `localhost`)
+      - `RABBITMQ_PORT`: Broker port (e.g. `5672`)
+      - `RABBITMQ_USER`: Broker User username (e.g. `guest`)
+      - `RABBITMQ_PASSWORD`: Broker User password (e.g. `guest`)
+      - `JWT_SECRET`: String for authorization
       - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
 			
 3. Load `.env` for use by `application.properties`:
@@ -318,7 +350,7 @@ Strategy:
 
 2. Run Docker Desktop
 
-3. Run the database and cache:
+3. Run the infrastructure layer (DB, Cache and Broker)
 
     ```bash
     docker compose up -d
@@ -345,7 +377,7 @@ Strategy:
         ```
     * Log in via `auth/login` to receive updated JWT with `ADMIN` role
 
-5. When stopping the service, remember to stop the database too:
+5. When stopping the service, remember to stop the infrastructure too:
 
     ```bash
     docker compose down
@@ -354,7 +386,6 @@ Strategy:
 ---
 
 ### 🌱 Future Improvements
-* RabbitMQ integration (Asynchronous processing)
 * Resilience improvements (E.g. Rate limiting)
 * Spring Actuator integration (Monitoring)
 * OpenAPI integration (API documentation)
