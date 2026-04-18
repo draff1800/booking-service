@@ -26,6 +26,7 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-cache")
+	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-security")
@@ -34,6 +35,7 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+	implementation("org.springframework.retry:spring-retry")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")

@@ -52,4 +52,6 @@ public class Booking {
   public UUID getId() { return id; }
   public UUID getUserId() { return userId; }
   public BookingStatus getStatus() { return status; }
+  public Instant getCreatedAt() { return createdAt; }
+  public String getIdempotencyKey() { return idempotencyKey; }
 }

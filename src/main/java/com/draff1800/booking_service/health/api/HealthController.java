@@ -1,4 +1,4 @@
-package com.draff1800.booking_service.common.api;
+package com.draff1800.booking_service.health.api;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

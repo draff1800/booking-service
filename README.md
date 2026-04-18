@@ -107,7 +107,7 @@ Key Entities:
 
 Design Principles:
 
-- Explicit aggregates (E.g. Booking contains multiple BookingItems, which are accessed through that Booking and follow common rules)
+- Explicit aggregates (e.g. Booking contains multiple BookingItems, which are accessed through that Booking and follow common rules)
 - UUID-based identities
 - Domain Models (Business logic) separate from DTOs (API contract)
 - Public vs Internal identity separation

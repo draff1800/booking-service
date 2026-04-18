@@ -7,6 +7,7 @@ import com.draff1800.booking_service.booking.repo.BookingRepository;
 import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.common.idempotency.IdempotencyKeys;
+import com.draff1800.booking_service.messaging.booking.BookingEventOutboxService;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
 
@@ -26,15 +27,18 @@ public class BookingService {
   private final TicketTypeRepository ticketTypeRepository;
   private final BookingRepository bookingRepository;
   private final BookingItemRepository bookingItemRepository;
+  private final BookingEventOutboxService bookingEventOutboxService;
 
   public BookingService(
       TicketTypeRepository ticketTypeRepository,
       BookingRepository bookingRepository,
-      BookingItemRepository bookingItemRepository
+      BookingItemRepository bookingItemRepository,
+      BookingEventOutboxService bookingEventOutboxService
   ) {
     this.ticketTypeRepository = ticketTypeRepository;
     this.bookingRepository = bookingRepository;
     this.bookingItemRepository = bookingItemRepository;
+    this.bookingEventOutboxService = bookingEventOutboxService;
   }
 
   public record BookingWithItems(Booking booking, List<BookingItem> items) {}
@@ -111,6 +115,7 @@ public class BookingService {
     }
 
     bookingItems = bookingItemRepository.saveAll(bookingItems);
+    bookingEventOutboxService.enqueueBookingConfirmedEvent(booking, bookingItems);
 
     return new BookingWithItems(booking, bookingItems);
   }

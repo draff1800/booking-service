@@ -8,6 +8,7 @@ import com.draff1800.booking_service.common.error.exception.ConflictException;
 import com.draff1800.booking_service.common.error.exception.NotFoundException;
 import com.draff1800.booking_service.event.domain.TicketType;
 import com.draff1800.booking_service.event.repo.TicketTypeRepository;
+import com.draff1800.booking_service.messaging.booking.BookingEventOutboxService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -32,6 +33,7 @@ class BookingServiceTest {
   @Mock private TicketTypeRepository ticketTypeRepository;
   @Mock private BookingRepository bookingRepository;
   @Mock private BookingItemRepository bookingItemRepository;
+  @Mock private BookingEventOutboxService bookingEventOutboxService;
 
   @InjectMocks
   private BookingService bookingService;
@@ -119,6 +121,7 @@ class BookingServiceTest {
 
     verify(bookingRepository).save(any());
     verify(bookingItemRepository).saveAll(any());
+    verify(bookingEventOutboxService).enqueueBookingConfirmedEvent(eq(booking), anyList());
   }
 
   @Test
@@ -155,6 +158,7 @@ class BookingServiceTest {
     InOrder inOrder = inOrder(ticketTypeRepository);
     inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType1Id, 1);
     inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType2Id, 1);
+    verify(bookingEventOutboxService).enqueueBookingConfirmedEvent(eq(booking), anyList());
   }
 
   @Test
