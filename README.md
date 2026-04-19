@@ -3,7 +3,7 @@
 
 A Spring Boot 3 service for users to book tickets to events, as well as create and manage their own.
 
-This is an enterprise-grade codebase aligned with industry best practices, demonstrating expertise in backend development.
+This is an enterprise-grade codebase aligned with industry best practices, demonstrating expertise in backend development and infrastructure.
 
 ### ℹ️ Overview
 Booking Service allows users to:
