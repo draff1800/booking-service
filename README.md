@@ -313,9 +313,9 @@ Strategy:
 #### Actuator
 | Route | Description                                          
 |-------|-------------
-| <kbd>GET /actuator/health</kbd> | Get whether the service and infrastructure are working overall
-| <kbd>GET /actuator/health/liveness</kbd> | Get whether the service is in a valid state
-| <kbd>GET /actuator/health/readiness</kbd> | Get whether the service can handle requests
+| <kbd>GET /actuator/health</kbd> | Get whether service and infrastructure are working overall
+| <kbd>GET /actuator/health/liveness</kbd> | Get whether service is in a valid state
+| <kbd>GET /actuator/health/readiness</kbd> | Get whether service can handle requests
 | <kbd>GET /actuator/info</kbd> | Get service metadata
 | <kbd>GET /actuator/metrics</kbd> | List runtime metrics (Admin-only, queryable via `/<metric name`>)
 | <kbd>GET /actuator/prometheus</kbd> | List runtime metrics for Prometheus tools (Admin-only)
