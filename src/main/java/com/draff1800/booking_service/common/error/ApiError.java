@@ -9,7 +9,7 @@ public record ApiError(
     String error,
     String message,
     String path,
-    String traceId,
+    String correlationId,
     Map<String, Object> details
 ) {
   public static ApiError of(
@@ -17,9 +17,9 @@ public record ApiError(
       String error,
       String message,
       String path,
-      String traceId,
+      String correlationId,
       Map<String, Object> details
   ) {
-    return new ApiError(Instant.now(), status, error, message, path, traceId, details);
+    return new ApiError(Instant.now(), status, error, message, path, correlationId, details);
   }
 }

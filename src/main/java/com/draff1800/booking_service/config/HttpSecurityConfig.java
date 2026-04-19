@@ -2,6 +2,7 @@ package com.draff1800.booking_service.config;
 
 import com.draff1800.booking_service.security.SecurityErrorHandlers;
 import com.draff1800.booking_service.security.jwt.JwtAuthFilter;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,8 +29,20 @@ public class HttpSecurityConfig {
           .accessDeniedHandler(securityErrorHandlers)
         )
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/health", "/auth/**").permitAll()
+            // All requests permitted
+            .requestMatchers(
+              "/actuator/health/**", 
+              "/actuator/info", 
+              "/auth/**"
+            ).permitAll()
+
+            // Remaining /actuator requests must be ADMIN
+            .requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ADMIN")
+
+            // All GET /events/** requests permitted
             .requestMatchers(HttpMethod.GET, "/events/**").permitAll()
+
+            // Remaining requests must be authenticated
             .anyRequest().authenticated()
         )
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

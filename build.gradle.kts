@@ -6,7 +6,19 @@ plugins {
 
 group = "com.draff1800"
 version = "0.0.1-SNAPSHOT"
-description = "A Spring Boot 3 service for users to book tickets to events. Events can be created and managed by other users."
+description = "A Spring Boot 3 service for users to book tickets to events, as well as create and manage their own."
+
+springBoot {
+  buildInfo {
+		properties {
+			additional.set(
+				mapOf(
+					"description" to (project.description ?: "")
+				)
+			)
+		}
+  }
+}
 
 java {
 	toolchain {
@@ -25,6 +37,7 @@ repositories {
 }
 
 dependencies {
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-cache")
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -36,11 +49,12 @@ dependencies {
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("io.jsonwebtoken:jjwt-api:0.12.6")
 	implementation("org.springframework.retry:spring-retry")
+	annotationProcessor("org.projectlombok:lombok")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
-	annotationProcessor("org.projectlombok:lombok")
+	runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:junit-jupiter")

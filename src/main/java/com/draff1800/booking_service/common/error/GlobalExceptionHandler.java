@@ -1,5 +1,7 @@
 package com.draff1800.booking_service.common.error;
 
+import com.draff1800.booking_service.common.observability.CorrelationIds;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -18,7 +20,6 @@ import com.draff1800.booking_service.common.error.exception.UnauthorizedExceptio
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -37,7 +38,7 @@ public class GlobalExceptionHandler {
         "VALIDATION_ERROR",
         "Request validation failed",
         request.getRequestURI(),
-        randomTraceId(),
+        CorrelationIds.getIdFrom(request),
         Map.of("fields", fieldErrors)
     ));
   }
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
         "VALIDATION_ERROR",
         exception.getMessage(),
         request.getRequestURI(),
-        randomTraceId(),
+        CorrelationIds.getIdFrom(request),
         null
     ));
   }
@@ -61,7 +62,7 @@ public class GlobalExceptionHandler {
       "UNAUTHORIZED",
       exception.getMessage(),
       request.getRequestURI(),
-      randomTraceId(),
+      CorrelationIds.getIdFrom(request),
       null
     ));
   }
@@ -73,7 +74,7 @@ public class GlobalExceptionHandler {
       "FORBIDDEN",
       exception.getMessage(),
       request.getRequestURI(),
-      randomTraceId(),
+      CorrelationIds.getIdFrom(request),
       null
     ));
   }
@@ -85,7 +86,7 @@ public class GlobalExceptionHandler {
         "NOT_FOUND",
         exception.getMessage(),
         request.getRequestURI(),
-        randomTraceId(),
+        CorrelationIds.getIdFrom(request),
         null
     ));
   }
@@ -97,30 +98,25 @@ public class GlobalExceptionHandler {
       "CONFLICT",
       exception.getMessage(),
       request.getRequestURI(),
-      randomTraceId(),
+      CorrelationIds.getIdFrom(request),
       null
     ));
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleGeneric(Exception exception, HttpServletRequest request) {
-    String traceId = randomTraceId();
+    String correlationId = CorrelationIds.getIdFrom(request);
     String requestUri = request.getRequestURI();
     
-    logger.error("Unexpected Error - traceId={} path={}", traceId, requestUri, exception);
+    logger.error("Unexpected Error - correlationId={} path={}", correlationId, requestUri, exception);
 
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiError.of(
         500,
         "INTERNAL_ERROR",
         "Unexpected error",
         requestUri,
-        randomTraceId(),
+        correlationId,
         null
     ));
   }
-
-  private String randomTraceId() {
-    return UUID.randomUUID().toString();
-  }
 }
-

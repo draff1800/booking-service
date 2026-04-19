@@ -13,11 +13,13 @@ Booking Service allows users to:
 - Create and view Bookings for Tickets, including oversell protection
 - Manage and view their profile (E.g. Update handle)
 - Perform Admin operations (E.g. Update User role)
+- View service metrics
 
 #### ⚙️ Tech Stack
 - Java 17+
 - Spring Boot 3
-- Spring Security (JWT)
+- Spring Boot Actuator
+- Spring Security
 - PostgreSQL
 - Redis
 - RabbitMQ
@@ -51,62 +53,69 @@ Envisaged as part of a wider system, including:
 flowchart LR
 
   Client["Clients<br/>(Postman / Frontends)"]
-  LB["Load Balancer"]
+
+  LoadBalancer["Load Balancer"]
 
   subgraph API["Spring Boot API"]
-    direction TB
+    direction LR
 
-    Security["JWT Security (Stateless)"]
+    subgraph RequestPath["HTTP Request Path"]
+      direction LR
 
-    subgraph Controllers["Controllers"]
-      Auth["Auth"]
-      Event["Event"]
-      Booking["Booking"]
-      User["User"]
-      Admin["Admin"]
-      Health["Health"]
+      subgraph APISurface["API Surface"]
+        direction TD
+        Auth["Auth"]
+        Event["Event"]
+        Booking["Booking"]
+        User["User"]
+        Admin["Admin"]
+        Actuator["Actuator"]
+      end
+
+      Security["JWT Security"]
+      Services["Services"]
+
+      CacheAbstraction["Cache Abstraction"]
+      RequestRepositories["Repositories"]
     end
 
-    Services["Services <br/>(Authorization, validation...)"]
-    Repositories["Repositories"]
-    Cache["Cache Abstraction"]
-    Outbox["Message Publisher"]
-    Consumer["Message Consumer"]
+    subgraph MessagingPath["Async Messaging Path"]
+      direction LR
+      MessagePublisher["Publisher"]
+      MessageConsumer["Consumer"]
+      MessageRepositories["Repositories"]
+    end
   end
 
-  subgraph Infra["Infrastructure"]
+  subgraph Infrastructure["Infrastructure"]
+    direction LR
+    RabbitMQ[("RabbitMQ Broker")]
     Redis[("Redis Cache")]
     Postgres[(PostgreSQL DB)]
-    RabbitMQ[("RabbitMQ Broker")]
   end
 
-  Client -->|HTTP / JSON| LB
-  LB --> Auth
-  LB --> Event
-  LB --> Booking
-  LB --> User
-  LB --> Admin
-  LB --> Health
+  Auth -->|JWT| Client
+  Client -->|HTTP / JSON| LoadBalancer
+  LoadBalancer --> APISurface
 
-  Auth --> Security
-  Event --> Security
-  Booking --> Security
-  User --> Security
-  Admin --> Security
+  APISurface --> Security
+  Actuator -.->|Admin Requests| Security
 
   Security --> Services
-  Services --> Repositories
-  Services --> Cache
-  Services --> Outbox
 
-  Cache --> Redis
-  Repositories --> Postgres
-  Outbox --> Postgres
-  Outbox --> RabbitMQ
-  RabbitMQ --> Consumer
-  Consumer --> Postgres
+  Services --> CacheAbstraction
+  Services --> RequestRepositories
+  Services -->|enqueues messages| MessageRepositories
 
-  Auth -->|JWT| Client
+  CacheAbstraction --> Redis
+  RequestRepositories --> Postgres
+  MessageRepositories --> Postgres
+
+  MessagePublisher -->|reads enqueued messages| MessageRepositories
+  MessagePublisher -->|publishes messages| RabbitMQ
+  MessageConsumer -->|marks processed messages| MessageRepositories
+  
+  RabbitMQ -->|delivers messages| MessageConsumer
 ```
 
 #### 🗂️ Domain Modelling
@@ -125,7 +134,7 @@ Design Principles:
 - Domain Models (Business logic) separate from DTOs (API contract)
 - Public vs Internal identity separation
 
-#### 👥 Public vs Public Identity
+#### 👥 Public vs Internal Identity
 Distinguishes between:
 
 | Type | Field | Purpose                                 
@@ -195,6 +204,15 @@ The Outbox pattern (saving message-related info the DB) is utilised:
 - Ensures messages are only published after booking transactions succeed
 - Message publish failures can retry without losing booking info
 
+#### 🔎 Observability
+Spring Actuator is used for exposing service metrics.
+
+Strategy:
+- `/health` and `/info` data is public for operational checks
+- `/metrics` and `/prometheus` data is Admin-only for metrics collection
+- `correlationId` ties responses, logs and errors to requests (Explicitly provided via `X-Correlation-ID` header)
+- Redis and RabbitMQ will only be considered by `/health` when enabled
+
 #### ✨ Other Features
 1. **Oversell Protection (Concurrency-Safe)**
     Ticket booking uses atomic database updates:
@@ -234,7 +252,7 @@ The Outbox pattern (saving message-related info the DB) is utilised:
       "error": "UNAUTHORIZED",
       "message": "...",
       "path": "...",
-      "traceId": "...",
+      "correlationId": "...",
       "details": null
     }
     ```
@@ -292,10 +310,15 @@ The Outbox pattern (saving message-related info the DB) is utilised:
 |-------|-------------
 | <kbd>PATCH /admin/users/:id/role</kbd> | Update specific User's role
 
-#### Health
+#### Actuator
 | Route | Description                                          
 |-------|-------------
-| <kbd>GET /health</kbd> | Get server status
+| <kbd>GET /actuator/health</kbd> | Get whether the service and infrastructure are working overall
+| <kbd>GET /actuator/health/liveness</kbd> | Get whether the service is in a valid state
+| <kbd>GET /actuator/health/readiness</kbd> | Get whether the service can handle requests
+| <kbd>GET /actuator/info</kbd> | Get service metadata
+| <kbd>GET /actuator/metrics</kbd> | List runtime metrics (Admin-only, queryable via `/<metric name`>)
+| <kbd>GET /actuator/prometheus</kbd> | List runtime metrics for Prometheus tools (Admin-only)
 
 ---
 
@@ -387,7 +410,6 @@ The Outbox pattern (saving message-related info the DB) is utilised:
 
 ### 🌱 Future Improvements
 * Resilience improvements (E.g. Rate limiting)
-* Spring Actuator integration (Monitoring)
 * OpenAPI integration (API documentation)
 * Automated code quality checks
 * General functionality additions
