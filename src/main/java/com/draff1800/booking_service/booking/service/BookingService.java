@@ -63,8 +63,8 @@ public class BookingService {
     String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
     String requestFingerprint = getRequestFingerprint(normalisedIKey, quantitiesByTicketType);
 
-    var existingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
-    if (existingBooking.isPresent()) return existingBooking.get();
+    var possibleExistingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
+    if (possibleExistingBooking.isPresent()) return possibleExistingBooking.get();
 
     List<UUID> ticketTypeIds = new ArrayList<>(quantitiesByTicketType.keySet());
     List<TicketType> ticketTypes = ticketTypeRepository.findAllById(ticketTypeIds);
@@ -80,8 +80,8 @@ public class BookingService {
       booking = bookingRepository.saveAndFlush(new Booking(userId, normalisedIKey, requestFingerprint));
     } catch (DataIntegrityViolationException exception) {
       // Re-check for an existing booking in case the same idempotent request arrived concurrently.
-      existingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
-      if (existingBooking.isPresent()) return existingBooking.get();
+      possibleExistingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
+      if (possibleExistingBooking.isPresent()) return possibleExistingBooking.get();
       throw exception;
     }
 

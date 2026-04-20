@@ -39,7 +39,7 @@ class InMemoryRateLimitingFilterTest {
     assertThat(calls).hasValue(1);
     assertThat(limitedResponse.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
     assertThat(limitedResponse.getHeader("Retry-After")).isEqualTo("60");
-    assertThat(limitedResponse.getContentAsString()).contains("RATE_LIMITED");
+    assertThat(limitedResponse.getContentAsString()).contains("TOO_MANY_REQUESTS");
   }
 
   private FilterChain countingChain(AtomicInteger calls) {
