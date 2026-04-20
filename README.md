@@ -416,7 +416,9 @@ To address these problems at scale, rate limiting would move to Redis, an API ga
         ```
     * Log in via `auth/login` to receive updated JWT with `ADMIN` role
 
-5. When stopping the service, remember to stop the infrastructure too:
+6. A [Postman collection](docs/postman/booking-service.postman_collection) is included for manual testing.
+
+7. When stopping the service, remember to stop the infrastructure too:
 
     ```bash
     docker compose down
