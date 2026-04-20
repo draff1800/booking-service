@@ -213,6 +213,23 @@ Strategy:
 - `correlationId` ties responses, logs and errors to requests (Explicitly provided via `X-Correlation-ID` header)
 - Redis and RabbitMQ will only be considered by `/health` when enabled
 
+#### 💪 Resilience
+Measures are used to address failure scenarios.
+
+Strategy:
+- `POST /bookings` correctness is handled through database constraints, atomic capacity updates and idempotency
+- `POST /bookings` also stores `request_fingerprint` to prevent `Idempotency-Key` header reuse with different bookings
+- RabbitMQ consumer retries are limited, with a short backoff for data-access failures. Failed messages go to the dead-letter queue
+- High-risk endpoints are protected by an in-memory rate limiter:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /auth/login` | Reduce brute-force/login spam risk |
+| `POST /auth/register` | Reduce account creation bursts |
+| `POST /bookings` | Protect contention-heavy booking writes |
+
+To address these problems at scale, rate limiting would move to Redis, an API gateway or edge infrastructure.
+
 #### ✨ Other Features
 1. **Oversell Protection (Concurrency-Safe)**
     Ticket booking uses atomic database updates:
@@ -229,20 +246,16 @@ Strategy:
     * Safety under high concurrency
     * Enforcement at DB level
 
-2. **Idempotency**
-    Critical write endpoints (e.g. `POST /bookings`) support the `Idempotency-Key` header.
-    Prevents duplicate operations like double bookings.
+2. **N+1 Query Avoidance**
+    Bulk-fetch strategy is used to avoid chain-reactions of queries.
 
-3. **Pagination**
-    List endpoints (e.g. `GET /events`) suppoort pagination:
+    For example:
+    * `GET /events` - All organizers are retrieved in 1 call.
+    * `GET /bookings/mine` - All Booking Items are retrieved in 1 call.
 
-    ```
-    ?page=0&size=20
-    ```
+    Prevents performance degradation at scale.
 
-    Ensures scalability with large datasets.
-
-4. **Global Error Handling**
+3. **Global Error Handling**
     Central handling via `@RestControllerAdvice`, producing consistent API responses:
 
     ```json
@@ -257,14 +270,14 @@ Strategy:
     }
     ```
 
-5. **N+1 Query Avoidance**
-    Bulk-fetch strategy is used to avoid chain-reactions of queries.
+4. **Pagination**
+    List endpoints (e.g. `GET /events`) suppoort pagination:
 
-    For example:
-    * `GET /events` - All organizers are retrieved in 1 call.
-    * `GET /bookings/mine` - All Booking Items are retrieved in 1 call.
+    ```
+    ?page=0&size=20
+    ```
 
-    Prevents performance degradation at scale.
+    Ensures scalability with large datasets.
 
 #### 🧪 Testing
 * **Unit:** Verifies business logic in isolation using JUnit and Mockito.
@@ -341,22 +354,25 @@ Strategy:
 
     - Adjust its values based on your desired configuration:
 
+      - `RATE_LIMIT_ENABLED`: Whether request limiting is enabled (e.g. in `POST /auth/login`)
+      - `RATE_LIMIT_CAPACITY`: Request limit per `RATE_LIMIT_REFILL_PERIOD_S`
+      - `RATE_LIMIT_REFILL_PERIOD_S`: Duration before request limit resets
+      - `JWT_SECRET`: String for authorization
+      - `JWT_TIME_TO_LIVE_S`: Seconds the JWT is valid for
+      - `POSTGRES_HOST`: Database host (e.g. `localhost`)
+      - `POSTGRES_PORT`: Database port (e.g. `5432`)
       - `POSTGRES_DB`: Database name
       - `POSTGRES_USER`: Database User username
       - `POSTGRES_PASSWORD`: Database User password
-      - `POSTGRES_HOST`: Database host (e.g. `localhost`)
-      - `POSTGRES_PORT`: Database port (e.g. `5432`)
       - `REDIS_ENABLED`: Whether caching is enabled (e.g. in `GET /events`)
       - `REDIS_HOST`: Cache host (e.g. `localhost`)
       - `REDIS_PORT`: Cache port (e.g. `6379`)
       - `RABBITMQ_ENABLED`: Whether messaging is enabled (e.g. in `POST /bookings`)
-      - `RABBITMQ_OUTBOX_PUBLISH_DELAY_MS`: How often unpublished messages are published
       - `RABBITMQ_HOST`: Broker host (e.g. `localhost`)
       - `RABBITMQ_PORT`: Broker port (e.g. `5672`)
       - `RABBITMQ_USER`: Broker User username (e.g. `guest`)
       - `RABBITMQ_PASSWORD`: Broker User password (e.g. `guest`)
-      - `JWT_SECRET`: String for authorization
-      - `JWT_TIME_TO_LIVE_SECONDS`: Seconds the JWT is valid for
+      - `RABBITMQ_OUTBOX_PUBLISH_DELAY_MS`: How often unpublished messages are published
 			
 3. Load `.env` for use by `application.properties`:
 
@@ -409,8 +425,8 @@ Strategy:
 ---
 
 ### 🌱 Future Improvements
-* Resilience improvements (E.g. Rate limiting)
 * OpenAPI integration (API documentation)
 * Automated code quality checks
 * General functionality additions
 * Improved test coverage
+* Distributed rate limiting

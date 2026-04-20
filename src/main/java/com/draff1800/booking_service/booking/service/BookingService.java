@@ -17,7 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.HexFormat;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
@@ -57,8 +61,9 @@ public class BookingService {
     validateQuantities(quantitiesByTicketType);
 
     String normalisedIKey = IdempotencyKeys.normalize(idempotencyKey);
+    String requestFingerprint = getRequestFingerprint(normalisedIKey, quantitiesByTicketType);
 
-    var existingBooking = getExistingBooking(userId, normalisedIKey);
+    var existingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
     if (existingBooking.isPresent()) return existingBooking.get();
 
     List<UUID> ticketTypeIds = new ArrayList<>(quantitiesByTicketType.keySet());
@@ -68,6 +73,16 @@ public class BookingService {
       Set<UUID> found = ticketTypes.stream().map(TicketType::getId).collect(Collectors.toSet());
       List<UUID> missing = ticketTypeIds.stream().filter(id -> !found.contains(id)).toList();
       throw new NotFoundException("The following ticket type(s) were not found: " + missing);
+    }
+
+    Booking booking;
+    try {
+      booking = bookingRepository.saveAndFlush(new Booking(userId, normalisedIKey, requestFingerprint));
+    } catch (DataIntegrityViolationException exception) {
+      // Re-check for an existing booking in case the same idempotent request arrived concurrently.
+      existingBooking = getExistingBooking(userId, normalisedIKey, requestFingerprint);
+      if (existingBooking.isPresent()) return existingBooking.get();
+      throw exception;
     }
 
     List<Entry<UUID, Integer>> sortedQuantitiesByTicketType = quantitiesByTicketType.entrySet().stream()
@@ -82,16 +97,6 @@ public class BookingService {
       if (numberOfTicketTypesUpdated == 0) {
         throw new ConflictException("No tickets remaining for ticketTypeId=" + ticketTypeId);
       }
-    }
-
-    Booking booking;
-    try {
-      booking = bookingRepository.save(new Booking(userId, normalisedIKey));
-    } catch (DataIntegrityViolationException exception) {
-      // Re-check for existing booking in case same request was made twice concurrently
-      existingBooking = getExistingBooking(userId, normalisedIKey);
-      if (existingBooking.isPresent()) return existingBooking.get();
-      throw exception;
     }
 
     Map<UUID, TicketType> ticketTypesById = ticketTypes.stream().collect(
@@ -143,20 +148,29 @@ public class BookingService {
     ));
   }
 
-  private Optional<BookingWithItems> getExistingBooking(UUID userId, String idempotencyKey) {
+  private Optional<BookingWithItems> getExistingBooking(
+      UUID userId,
+      String idempotencyKey,
+      String requestFingerprint
+  ) {
     if (idempotencyKey == null) {
       return Optional.empty();
     }
 
-    var existingBooking = bookingRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
+    var possibleExistingBooking = bookingRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey);
 
-    if (existingBooking.isEmpty()) {
+    if (possibleExistingBooking.isEmpty()) {
       return Optional.empty();
     }
 
-    var bookingItems = bookingItemRepository.findByBookingId(existingBooking.get().getId());  
+    Booking existingBooking = possibleExistingBooking.get();
+    if (existingBooking.getRequestFingerprint() != null && !Objects.equals(existingBooking.getRequestFingerprint(), requestFingerprint)) {
+      throw new ConflictException("Idempotency-Key was already used for a different booking request");
+    }
 
-    return Optional.of(new BookingWithItems(existingBooking.get(), bookingItems));
+    var bookingItems = bookingItemRepository.findByBookingId(existingBooking.getId());
+
+    return Optional.of(new BookingWithItems(existingBooking, bookingItems));
   }
 
   private void validateQuantities(Map<UUID, Integer> quantitiesByTicketType) {
@@ -167,6 +181,25 @@ public class BookingService {
 
     if (!invalidTicketTypeIds.isEmpty()) {
       throw new ConflictException("Booking quantities must be positive for ticketTypeIds=" + invalidTicketTypeIds);
+    }
+  }
+
+  private String getRequestFingerprint(String idempotencyKey, Map<UUID, Integer> quantitiesByTicketType) {
+    if (idempotencyKey == null) {
+      return null;
+    }
+
+    String normalizedRequest = quantitiesByTicketType.entrySet().stream()
+      .sorted(Entry.comparingByKey())
+      .map(entry -> entry.getKey() + "=" + entry.getValue())
+      .collect(Collectors.joining("\n"));
+
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(normalizedRequest.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hash);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 digest is unavailable", exception);
     }
   }
 }

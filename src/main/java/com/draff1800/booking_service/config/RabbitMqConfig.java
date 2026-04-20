@@ -17,6 +17,8 @@ import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainer
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.retry.policy.SimpleRetryPolicy;
 
 import com.draff1800.booking_service.messaging.RabbitMqMessagingTopology;
 
@@ -75,16 +77,27 @@ public class RabbitMqConfig {
     ConnectionFactory connectionFactory,
     MessageConverter rabbitMessageConverter
   ) {
+
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+
     configurer.configure(factory, connectionFactory);
+
     factory.setMessageConverter(rabbitMessageConverter);
     factory.setDefaultRequeueRejected(false);
+
+    SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy(
+      3,
+      Map.of(TransientDataAccessException.class, true),
+      true
+    );
     factory.setAdviceChain(
       RetryInterceptorBuilder.stateless()
-        .maxAttempts(3)
+        .retryPolicy(retryPolicy)
+        .backOffOptions(500, 2.0, 2_000)
         .recoverer(new RejectAndDontRequeueRecoverer())
         .build()
     );
+
     return factory;
   }
 }

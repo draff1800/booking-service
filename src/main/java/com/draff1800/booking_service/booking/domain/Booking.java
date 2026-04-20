@@ -28,12 +28,16 @@ public class Booking {
   @Column(name = "idempotency_key", length = 100)
   private String idempotencyKey;
 
+  @Column(name = "request_fingerprint", length = 64)
+  private String requestFingerprint;
+
   protected Booking() {}
 
-  public Booking(UUID userId, String idempotencyKey) {
+  public Booking(UUID userId, String idempotencyKey, String requestFingerprint) {
     this.userId = userId;
     this.status = BookingStatus.CONFIRMED;
     this.idempotencyKey = idempotencyKey;
+    this.requestFingerprint = requestFingerprint;
   }
 
   @PrePersist
@@ -54,4 +58,5 @@ public class Booking {
   public BookingStatus getStatus() { return status; }
   public Instant getCreatedAt() { return createdAt; }
   public String getIdempotencyKey() { return idempotencyKey; }
+  public String getRequestFingerprint() { return requestFingerprint; }
 }

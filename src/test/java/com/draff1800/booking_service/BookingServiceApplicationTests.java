@@ -36,7 +36,7 @@ class BookingServiceApplicationTests {
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
 		
 		registry.add("JWT_SECRET", () -> "test-secret-that-is-long-enough-for-hs256-signing-123456");
-		registry.add("JWT_TIME_TO_LIVE_SECONDS", () -> "900");
+		registry.add("JWT_TIME_TO_LIVE_S", () -> "900");
 	}
 
 	@Test

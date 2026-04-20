@@ -18,9 +18,14 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HexFormat;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,7 +76,8 @@ class BookingServiceTest {
         .isInstanceOf(ConflictException.class)
         .hasMessage("No tickets remaining for ticketTypeId=" + ticketTypeId);
 
-    verify(bookingRepository, never()).save(any());
+    verify(bookingRepository).saveAndFlush(any());
+    verifyNoInteractions(bookingItemRepository, bookingEventOutboxService);
   }
 
   @Test
@@ -108,7 +114,7 @@ class BookingServiceTest {
     UUID bookingId = UUID.randomUUID();
     when(booking.getId()).thenReturn(bookingId);
 
-    when(bookingRepository.save(any())).thenReturn(booking);
+    when(bookingRepository.saveAndFlush(any())).thenReturn(booking);
     when(bookingItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // ACT
@@ -119,7 +125,7 @@ class BookingServiceTest {
     assertThat(bookingWithItems.booking()).isEqualTo(booking);
     assertThat(bookingWithItems.items()).hasSize(1);
 
-    verify(bookingRepository).save(any());
+    verify(bookingRepository).saveAndFlush(any());
     verify(bookingItemRepository).saveAll(any());
     verify(bookingEventOutboxService).enqueueBookingConfirmedEvent(eq(booking), anyList());
   }
@@ -148,7 +154,7 @@ class BookingServiceTest {
     Booking booking = mock(Booking.class);
     when(booking.getId()).thenReturn(UUID.randomUUID());
 
-    when(bookingRepository.save(any())).thenReturn(booking);
+    when(bookingRepository.saveAndFlush(any())).thenReturn(booking);
     when(bookingItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // ACT
@@ -159,6 +165,58 @@ class BookingServiceTest {
     inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType1Id, 1);
     inOrder.verify(ticketTypeRepository).decrementCapacityIfAvailable(ticketType2Id, 1);
     verify(bookingEventOutboxService).enqueueBookingConfirmedEvent(eq(booking), anyList());
+  }
+
+  @Test
+  void createBooking_returnsExistingBooking_whenIdempotencyKeyIsReusedWithSameRequest() {
+    // ARRANGE
+    UUID userId = UUID.randomUUID();
+    UUID ticketTypeId = UUID.randomUUID();
+    String idempotencyKey = "same-booking-key";
+    Map<UUID, Integer> request = Map.of(ticketTypeId, 2);
+
+    Booking booking = mock(Booking.class);
+    UUID bookingId = UUID.randomUUID();
+    when(booking.getId()).thenReturn(bookingId);
+    when(booking.getRequestFingerprint()).thenReturn(getRequestFingerprint(request));
+
+    BookingItem item = mock(BookingItem.class);
+    when(bookingRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey))
+        .thenReturn(java.util.Optional.of(booking));
+    when(bookingItemRepository.findByBookingId(bookingId)).thenReturn(List.of(item));
+
+    // ACT
+    BookingService.BookingWithItems result = bookingService.createBooking(userId, idempotencyKey, request);
+
+    // ASSERT
+    assertThat(result.booking()).isEqualTo(booking);
+    assertThat(result.items()).containsExactly(item);
+    verifyNoInteractions(ticketTypeRepository, bookingEventOutboxService);
+    verify(bookingRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void createBooking_throwsConflict_whenIdempotencyKeyIsReusedWithDifferentRequest() {
+    // ARRANGE
+    UUID userId = UUID.randomUUID();
+    UUID originalTicketTypeId = UUID.randomUUID();
+    UUID newTicketTypeId = UUID.randomUUID();
+    String idempotencyKey = "reused-booking-key";
+
+    Booking booking = mock(Booking.class);
+    when(booking.getRequestFingerprint()).thenReturn(getRequestFingerprint(Map.of(originalTicketTypeId, 1)));
+    when(bookingRepository.findByUserIdAndIdempotencyKey(userId, idempotencyKey))
+        .thenReturn(java.util.Optional.of(booking));
+
+    // ACT & ASSERT
+    assertThatThrownBy(() ->
+        bookingService.createBooking(userId, idempotencyKey, Map.of(newTicketTypeId, 1))
+    )
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("Idempotency-Key was already used for a different booking request");
+
+    verifyNoInteractions(ticketTypeRepository, bookingItemRepository, bookingEventOutboxService);
+    verify(bookingRepository, never()).saveAndFlush(any());
   }
 
   @Test
@@ -206,4 +264,19 @@ class BookingServiceTest {
     verify(bookingRepository).findByUserIdOrderByCreatedAtDesc(userId, pageable);
     verify(bookingItemRepository).findByBookingIdIn(List.of(booking1Id, booking2Id));
   }  
+
+  private String getRequestFingerprint(Map<UUID, Integer> quantitiesByTicketType) {
+    String normalizedRequest = quantitiesByTicketType.entrySet().stream()
+      .sorted(Map.Entry.comparingByKey())
+      .map(entry -> entry.getKey() + "=" + entry.getValue())
+      .collect(Collectors.joining("\n"));
+
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(normalizedRequest.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hash);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
 }
