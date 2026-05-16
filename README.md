@@ -271,7 +271,7 @@ To address these problems at scale, rate limiting would move to Redis, an API ga
     ```
 
 4. **Pagination**
-    List endpoints (e.g. `GET /events`) suppoort pagination:
+    List endpoints (e.g. `GET /events`) support pagination:
 
     ```
     ?page=0&size=20
